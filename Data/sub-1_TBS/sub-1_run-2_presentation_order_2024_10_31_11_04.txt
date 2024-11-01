@@ -1,0 +1,32 @@
+Block: 1, Trial: 1, Condition: RIGHT ELBOW, Simulated Onset: 0.0, Duration: 9.0
+Block: 1, Trial: 2, Condition: LEFT FOOT, Simulated Onset: 9.0, Duration: 9.0
+Block: 1, Trial: 3, Condition: RIGHT FOOT, Simulated Onset: 18.0, Duration: 9.0
+Block: 1, Trial: 4, Condition: TONGUE, Simulated Onset: 27.0, Duration: 9.0
+Block: 1, Trial: 5, Condition: RIGHT HAND, Simulated Onset: 36.0, Duration: 9.0
+Block: 1, Trial: 6, Condition: LEFT HAND, Simulated Onset: 45.0, Duration: 9.0
+Block: 1, Trial: 7, Condition: LEFT ELBOW, Simulated Onset: 54.0, Duration: 9.0
+Block: 1, Trial: rest, Condition: REST, Simulated Onset: 63.0, Duration: 9.0
+Block: 2, Trial: 1, Condition: LEFT FOOT, Simulated Onset: 72.0, Duration: 9.0
+Block: 2, Trial: 2, Condition: LEFT ELBOW, Simulated Onset: 81.0, Duration: 9.0
+Block: 2, Trial: 3, Condition: RIGHT HAND, Simulated Onset: 90.0, Duration: 9.0
+Block: 2, Trial: 4, Condition: LEFT HAND, Simulated Onset: 99.0, Duration: 9.0
+Block: 2, Trial: 5, Condition: TONGUE, Simulated Onset: 108.0, Duration: 9.0
+Block: 2, Trial: 6, Condition: RIGHT FOOT, Simulated Onset: 117.0, Duration: 9.0
+Block: 2, Trial: 7, Condition: RIGHT ELBOW, Simulated Onset: 126.0, Duration: 9.0
+Block: 2, Trial: rest, Condition: REST, Simulated Onset: 135.0, Duration: 9.0
+Block: 3, Trial: 1, Condition: RIGHT FOOT, Simulated Onset: 144.0, Duration: 9.0
+Block: 3, Trial: 2, Condition: RIGHT HAND, Simulated Onset: 153.0, Duration: 9.0
+Block: 3, Trial: 3, Condition: LEFT FOOT, Simulated Onset: 162.0, Duration: 9.0
+Block: 3, Trial: 4, Condition: TONGUE, Simulated Onset: 171.0, Duration: 9.0
+Block: 3, Trial: 5, Condition: RIGHT ELBOW, Simulated Onset: 180.0, Duration: 9.0
+Block: 3, Trial: 6, Condition: LEFT ELBOW, Simulated Onset: 189.0, Duration: 9.0
+Block: 3, Trial: 7, Condition: LEFT HAND, Simulated Onset: 198.0, Duration: 9.0
+Block: 3, Trial: rest, Condition: REST, Simulated Onset: 207.0, Duration: 9.0
+Block: 4, Trial: 1, Condition: RIGHT FOOT, Simulated Onset: 216.0, Duration: 9.0
+Block: 4, Trial: 2, Condition: RIGHT ELBOW, Simulated Onset: 225.0, Duration: 9.0
+Block: 4, Trial: 3, Condition: LEFT FOOT, Simulated Onset: 234.0, Duration: 9.0
+Block: 4, Trial: 4, Condition: RIGHT HAND, Simulated Onset: 243.0, Duration: 9.0
+Block: 4, Trial: 5, Condition: LEFT HAND, Simulated Onset: 252.0, Duration: 9.0
+Block: 4, Trial: 6, Condition: LEFT ELBOW, Simulated Onset: 261.0, Duration: 9.0
+Block: 4, Trial: 7, Condition: TONGUE, Simulated Onset: 270.0, Duration: 9.0
+Block: 4, Trial: final_rest, Condition: REST, Simulated Onset: 279.0, Duration: 9.0

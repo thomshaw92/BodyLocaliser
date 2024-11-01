@@ -1,0 +1,54 @@
+# parameters.py
+# Timing parameters
+TR = 1.5  # TR (Repetition Time) in seconds
+TRs_per_trial = 6
+TRs_dummy_scans = 5  
+TRs_rest = 6
+TRs_instruction = 2 
+
+# Experiment setup
+blocks = 4  # Number of blocks
+trials_per_block = 7  # Trials per block
+
+# Condition definitions (names and codes)
+cond_names = ["LEFT ELBOW", "RIGHT ELBOW", "LEFT HAND", "RIGHT HAND", "LEFT FOOT", "RIGHT FOOT", "TONGUE"]
+cond_codes = [1, 2, 3, 4, 6, 7, 8]
+
+# Text settings (increase if text remains small with height units)
+instruction_text_size = 0.08  # 5% of window height
+trial_text_size = 0.09        # 8% of window height
+fixation_text_size = 0.11      # 10% of window height
+countdown_image_size = (0.4, 0.4)  # Set countdown image size to half of the original for display (adjust as needed)
+countdown_image_position = (0, 0.2)  # Position offset for images, e.g., (0, 0.2) moves it 20% up the screen
+# Colors
+background_color = 'black'  # Use 'black' for a black background
+text_color = 'yellow'
+
+# Monitor settings
+full_screen = True
+
+# Trigger settings
+trigger_input_method = 'key'  # Can be 'key', 'parallel', or 'serial'
+trigger_value = '5'  # Trigger key or value
+port_address = None  # For parallel input, specify the port address
+serial_port = None  # For serial input, specify the serial port
+
+# Optional countdown settings (if specific to the countdown sequence)
+# countdown_image_size = (200, 200)  # Example: set a fixed size for countdown images if needed
+# countdown_display_factor = 12      # If this will change, you can add it here to manage how many images per trial
+
+### saved output
+###put in the datetime in the filename
+## output_file = f"output_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
+## 7 output 1D files for each condition (for AFNI) and one for rest
+# so they will loook like this: 
+# output_LEFT ELBOW_2021-09-28_15-57-08.1D
+# output_RIGHT ELBOW_2021-09-28_15-57-08.1D
+
+# and then an overall output file that will look like this:
+# output_2021-09-28_15-57-08.csv and will contain:
+# Onset times for all conditions saved to data
+#with block number, trial number, condition name, onset time, time it took to do it, and onset time (cumulative) and duration as different rows
+#each column is an event
+#save the parameters.py into the output data folder
+# save the order of the presentation of the conditions to a presentation_order file
