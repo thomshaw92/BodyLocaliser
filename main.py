@@ -1,4 +1,4 @@
-from psychopy import core
+from psychopy import core, event
 import shutil
 from functions import *
 from parameters import *
@@ -26,6 +26,12 @@ if not os.path.exists(data_dir):
 
 # Save parameters.py into the data directory
 shutil.copy("parameters.py", os.path.join(data_dir, f"parameters_{datetag}.py"))
+
+def check_quit_key():
+    keys = event.getKeys()
+    if 'escape' in keys:
+        print("Experiment terminated by user.")
+        core.quit()  # Gracefully exit PsychoPy
 
 # Define trial structure and generate a full schedule in memory
 def generate_trial_schedule(blocks, trials_per_block, TR, cond_names):
@@ -94,9 +100,11 @@ countdown_images = [
 show_instruction(win, TR, TRs_instruction)
 show_waiting_for_scanner(win)
 wait_for_trigger(input_method=trigger_input_method, trigger_value=trigger_value)
+check_quit_key()
 
 # Handle dummy scans with fixation cross
 handle_dummy_scans(win, TR, TRs_dummy_scans)
+check_quit_key()
 
 # Initialize the global clock after dummy scans and initial rest
 global_clock = core.Clock()
@@ -105,6 +113,7 @@ global_clock = core.Clock()
 initial_rest_onset = global_clock.getTime()
 onset_dict["REST"].append(initial_rest_onset)
 show_rest_with_countdown(win, TR, TRs_rest, countdown_images)
+check_quit_key()
 
 # Log the initial rest period in the overall log
 overall_log.append({
