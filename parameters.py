@@ -6,8 +6,11 @@ TRs_dummy_scans = 5
 TRs_rest = 6
 TRs_instruction = 2
 
+##please note - if you wish to change the timing of the movements with the yellow timer, you will need to change the image numbers in the images folder and the parameter that divides the trial number by 12
+#this is in main.py and functions.py
+
 # Experiment setup
-blocks = 4  # Number of blocks
+blocks = 8  # Number of blocks
 trials_per_block = 7  # Trials per block - this should be linked to the number of conditions (below)
 
 # Condition definitions (names and codes)

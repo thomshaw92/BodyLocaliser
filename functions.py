@@ -40,13 +40,12 @@ def wait_for_trigger(input_method='key', trigger_value='5', port_address=None, s
     else:
         raise ValueError("Invalid input method. Choose 'key', 'parallel', or 'serial'.")
 
-
 # Function to get subject info with validation and instructions
 def get_subject_info():
     while True:
         # Create a custom dialog box
         info_dialog = gui.Dlg(title="Subject Information")
-        info_dialog.addText("Instructions: If you want to quit the experiment at any time, press Ctrl+C or CMD + Q on Mac.")
+        info_dialog.addText("Instructions: If you want to quit the experiment at any time, press Ctrl+C or CMD+Q on Mac.")
         info_dialog.addField("Participant Initials: ")
         info_dialog.addField("Subject Number: ")
         info_dialog.addField("Run Number: ")
@@ -57,23 +56,31 @@ def get_subject_info():
         if not info_dialog.OK:
             core.quit()  # Exit if the user cancels
 
-        # Extract the input fields
-        participant_initials, subnum, run_num = subject_info
+        # Extract the input fields and strip any whitespace
+        participant_initials = subject_info[0].strip()
+        subnum = subject_info[1].strip()
+        run_num = subject_info[2].strip()
 
         # Validate inputs
-        if not participant_initials.strip():
+        if not participant_initials:
             print("Error: Participant Initials cannot be empty.")
             continue
-        if not subnum.isdigit():
-            print("Error: Subject Number must be a valid number.")
+
+        # Validate and convert subject and run numbers
+        try:
+            subnum = int(subnum)  # Convert to integer
+        except ValueError:
+            print(f"Error: Subject Number '{subnum}' must be a valid number.")
             continue
-        if not run_num.isdigit():
-            print("Error: Run Number must be a valid number.")
+
+        try:
+            run_num = int(run_num)  # Convert to integer
+        except ValueError:
+            print(f"Error: Run Number '{run_num}' must be a valid number.")
             continue
 
         # If inputs are valid, return the information
         return {"Participant Initials": participant_initials, "Subject Number": subnum, "Run Number": run_num}
-
 # Key catch function to quit the experiment
 def check_quit_key():
     keys = event.getKeys()
