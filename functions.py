@@ -45,7 +45,7 @@ def get_subject_info():
     while True:
         # Create a custom dialog box
         info_dialog = gui.Dlg(title="Subject Information")
-        info_dialog.addText("Instructions: If you want to quit the experiment at any time, press Ctrl+C or CMD+Q on Mac.")
+        info_dialog.addText("Instructions: If you want to quit the experiment at any time, press escape and wait.")
         info_dialog.addField("Participant Initials: ")
         info_dialog.addField("Subject Number: ")
         info_dialog.addField("Run Number: ")
