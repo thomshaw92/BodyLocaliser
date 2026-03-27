@@ -1,0 +1,11 @@
+# BodyLocaliser dependencies
+#
+# Install with:  pip install -r requirements.txt
+#
+# IMPORTANT: PsychoPy requires Python >=3.9, <3.12.
+# The launcher scripts handle this automatically.
+psychopy
+
+# PyInstaller is only needed if you want to build a standalone executable.
+# Uncomment the line below if you plan to build bundles.
+# pyinstaller>=6.0
