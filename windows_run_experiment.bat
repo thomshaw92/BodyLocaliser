@@ -8,6 +8,10 @@ cd /d "%~dp0"
 
 set VENV_DIR=.venv
 
+set HAS_CONDA=0
+where conda >nul 2>&1
+if not errorlevel 1 set HAS_CONDA=1
+
 REM -------------------------------------------------------------------
 REM Step 1: Check for existing compatible venv
 REM -------------------------------------------------------------------
@@ -45,14 +49,16 @@ echo.
 
 REM Try the py launcher with specific versions
 for %%v in (3.11 3.10 3.9) do (
-    py -%%v --version >nul 2>&1
-    if not errorlevel 1 (
-        for /f "tokens=2 delims= " %%V in ('py -%%v --version 2^>^&1') do (
-            echo   Found py -%%v ^(%%V^)
+    echo Checking for py -%%v...
+    for /f "tokens=2 delims= " %%V in ('py -%%v --version 2^>nul') do (
+        set "VER=%%V"
+        echo !VER! | findstr /R "^%%v\." >nul
+        if not errorlevel 1 (
+            echo Found py -%%v ^(!VER!^)
             set PYTHON=py -%%v
-            set PYVER=%%V
+            set PYVER=!VER!
+            goto :found_system_python
         )
-        if defined PYTHON goto :found_system_python
     )
 )
 
@@ -85,10 +91,6 @@ if defined FOUND_ANY (
 echo.
 echo PsychoPy needs Python 3.9, 3.10, or 3.11 to run.
 echo.
-
-set HAS_CONDA=0
-where conda >nul 2>&1
-if not errorlevel 1 set HAS_CONDA=1
 
 echo How would you like to install a compatible Python?
 echo.
