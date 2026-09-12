@@ -87,46 +87,52 @@ def get_subject_info() -> dict:
     """Show a dialog to collect participant initials, subject number, and run number,
     then ask for the run order (see ask_run_order).
 
-    Returns a dict with keys 'initials', 'subject_number', 'run_number', 'run_order'.
-    Calls core.quit() if the user cancels either dialog.
+    Anything invalid is reported in red at the top of the dialog, which reopens
+    with what was typed still in place. Returns a dict with keys 'initials',
+    'subject_number', 'run_number', 'run_order'. Calls core.quit() if the user
+    cancels either dialog.
     """
+    error, typed = "", ["", "", ""]
     while True:
         dlg = gui.Dlg(title="Subject Information")
+        if error:
+            dlg.addText(error, color="red")
         dlg.addText(
             "Instructions: press Escape at any time during the experiment to quit."
         )
-        dlg.addField("Participant Initials:")
-        dlg.addField("Subject Number:")
-        dlg.addField("Run Number:")
+        dlg.addField("Participant Initials:", initial=typed[0])
+        dlg.addField("Subject Number:", initial=typed[1])
+        dlg.addField("Run Number:", initial=typed[2])
         data = dlg.show()
 
         if not dlg.OK:
             core.quit()
 
-        initials = data[0].strip()
-        raw_sub = data[1].strip()
-        raw_run = data[2].strip()
+        typed = [str(data[i]).strip() for i in range(3)]
+        initials, raw_sub, raw_run = typed
 
         if not initials:
-            print("Error: Participant Initials cannot be empty.")
-            continue
-        try:
-            sub = int(raw_sub)
-        except ValueError:
-            print(f"Error: Subject Number '{raw_sub}' must be a valid integer.")
-            continue
-        try:
-            run = int(raw_run)
-        except ValueError:
-            print(f"Error: Run Number '{raw_run}' must be a valid integer.")
-            continue
+            error = "Participant initials cannot be empty."
+        elif not _is_integer(raw_sub):
+            error = f"Subject number '{raw_sub}' must be a whole number."
+        elif not _is_integer(raw_run):
+            error = f"Run number '{raw_run}' must be a whole number."
+        else:
+            return {
+                "initials": initials,
+                "subject_number": int(raw_sub),
+                "run_number": int(raw_run),
+                "run_order": ask_run_order(),
+            }
+        logger.error(error)
 
-        return {
-            "initials": initials,
-            "subject_number": sub,
-            "run_number": run,
-            "run_order": ask_run_order(),
-        }
+
+def _is_integer(text: str) -> bool:
+    try:
+        int(text)
+    except ValueError:
+        return False
+    return True
 
 
 RUN_ORDER_CHOICES = {"Balanced random (seeded on subject number)": "random"}
@@ -137,13 +143,15 @@ def ask_run_order():
     """Ask which run order to present: a preset OpenRecon order (returns 1-7) or a
     balanced random order (returns "random").
 
-    Nothing is preselected, so the operator has to choose. Calls core.quit() if
-    the user cancels the dialog.
+    Nothing is preselected, so the operator has to choose; leaving it unchosen is
+    reported in red in the dialog. Calls core.quit() if the user cancels it.
     """
-    note = ""
+    error = ""
     while True:
         dlg = gui.Dlg(title="Run order")
-        dlg.addText(note + "For OpenRecon, pick the run order set on the scanner protocol card.")
+        if error:
+            dlg.addText(error, color="red")
+        dlg.addText("For OpenRecon, pick the run order set on the scanner protocol card.")
         dlg.addField("Run order:", choices=["Choose...", *RUN_ORDER_CHOICES])
         data = dlg.show()
 
@@ -151,7 +159,8 @@ def ask_run_order():
             core.quit()
         if data[0] in RUN_ORDER_CHOICES:
             return RUN_ORDER_CHOICES[data[0]]
-        note = "Please choose a run order. "
+        error = "Please choose a run order."
+        logger.error(error)
 
 
 # ---------------------------------------------------------------------------
