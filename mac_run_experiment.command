@@ -149,7 +149,7 @@ if [ -z "$PYTHON" ]; then
         if [ "$choice" = "$OPT_CONDA" ] && [ -n "$OPT_CONDA" ]; then
             echo ""
             echo "Creating conda environment with Python 3.11..."
-            if conda create -y -p "$VENV_DIR" python=3.11 pip -q; then
+            if conda create -y -p "$VENV_DIR" --override-channels -c conda-forge python=3.11 pip -q; then
                 PYTHON="$VENV_DIR/bin/python"
                 echo ""
                 echo "Conda environment created successfully."
@@ -266,7 +266,7 @@ if [ ! -d "$VENV_DIR" ]; then
         echo ""
         if command -v conda &>/dev/null; then
             if ask_yes_no "Would you like to try using conda instead?"; then
-                conda create -y -p "$VENV_DIR" python=3.11 pip -q
+                conda create -y -p "$VENV_DIR" --override-channels -c conda-forge python=3.11 pip -q
                 PYTHON="$VENV_DIR/bin/python"
             else
                 read -rp "Press Enter to exit..."

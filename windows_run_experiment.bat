@@ -122,7 +122,7 @@ REM --- Conda ---
 if "!USERCHOICE!"=="!OPT_CONDA!" if !OPT_CONDA! gtr 0 (
     echo.
     echo Creating conda environment with Python 3.11...
-    conda create -y -p %VENV_DIR% python=3.11 pip -q
+    conda create -y -p %VENV_DIR% --override-channels -c conda-forge python=3.11 pip -q
     if errorlevel 1 (
         echo.
         echo Conda environment creation failed.
@@ -231,7 +231,7 @@ if not exist "%VENV_DIR%\Scripts\python.exe" (
         if %HAS_CONDA%==1 (
             set /p CONDAFB="Would you like to try using conda instead? [y/n] "
             if /i "!CONDAFB!"=="y" (
-                conda create -y -p %VENV_DIR% python=3.11 pip -q
+                conda create -y -p %VENV_DIR% --override-channels -c conda-forge python=3.11 pip -q
                 if errorlevel 1 (
                     echo Conda also failed. Check the errors above.
                     pause

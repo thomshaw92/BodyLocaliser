@@ -13,6 +13,7 @@ from psychopy import visual, core, event, gui
 
 from parameters import (
     BACKGROUND_COLOR,
+    BLOCKS,
     COUNTDOWN_IMAGE_POSITION,
     COUNTDOWN_IMAGE_SIZE,
     FIXATION_TEXT_SIZE,
@@ -21,6 +22,7 @@ from parameters import (
     NUM_COUNTDOWN_IMAGES,
     TEXT_COLOR,
 )
+from run_orders import RUN_ORDERS
 
 logger = logging.getLogger(__name__)
 
@@ -82,10 +84,11 @@ def load_countdown_images(win: visual.Window) -> list:
 # ---------------------------------------------------------------------------
 
 def get_subject_info() -> dict:
-    """Show a dialog to collect participant initials, subject number, and run number.
+    """Show a dialog to collect participant initials, subject number, and run number,
+    then ask for the run order (see ask_run_order).
 
-    Returns a dict with keys 'initials', 'subject_number', 'run_number'.
-    Calls core.quit() if the user cancels the dialog.
+    Returns a dict with keys 'initials', 'subject_number', 'run_number', 'run_order'.
+    Calls core.quit() if the user cancels either dialog.
     """
     while True:
         dlg = gui.Dlg(title="Subject Information")
@@ -118,7 +121,37 @@ def get_subject_info() -> dict:
             print(f"Error: Run Number '{raw_run}' must be a valid integer.")
             continue
 
-        return {"initials": initials, "subject_number": sub, "run_number": run}
+        return {
+            "initials": initials,
+            "subject_number": sub,
+            "run_number": run,
+            "run_order": ask_run_order(),
+        }
+
+
+RUN_ORDER_CHOICES = {"Balanced random (seeded on subject number)": "random"}
+RUN_ORDER_CHOICES.update({f"OpenRecon run order {k}": k for k in sorted(RUN_ORDERS[BLOCKS])})
+
+
+def ask_run_order():
+    """Ask which run order to present: a preset OpenRecon order (returns 1-7) or a
+    balanced random order (returns "random").
+
+    Nothing is preselected, so the operator has to choose. Calls core.quit() if
+    the user cancels the dialog.
+    """
+    note = ""
+    while True:
+        dlg = gui.Dlg(title="Run order")
+        dlg.addText(note + "For OpenRecon, pick the run order set on the scanner protocol card.")
+        dlg.addField("Run order:", choices=["Choose...", *RUN_ORDER_CHOICES])
+        data = dlg.show()
+
+        if not dlg.OK:
+            core.quit()
+        if data[0] in RUN_ORDER_CHOICES:
+            return RUN_ORDER_CHOICES[data[0]]
+        note = "Please choose a run order. "
 
 
 # ---------------------------------------------------------------------------
@@ -205,11 +238,11 @@ def show_instruction(win: visual.Window, TR: float, TRs_instruction: int) -> Non
     core.wait(TR * TRs_instruction)
 
 
-def show_waiting_for_scanner(win: visual.Window) -> None:
-    """Display 'Waiting for scanner' until the trigger arrives."""
+def show_waiting_for_scanner(win: visual.Window, detail: str = "") -> None:
+    """Display 'Waiting for scanner', and *detail* below it, until the trigger arrives."""
     text = visual.TextStim(
         win,
-        text="Waiting for scanner",
+        text=f"Waiting for scanner\n\n{detail}",
         color=TEXT_COLOR,
         height=INSTRUCTION_TEXT_SIZE,
         units="height",

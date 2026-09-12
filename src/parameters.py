@@ -12,12 +12,15 @@ TR = 1.5                # Repetition Time in seconds
 TRs_per_trial = 6       # TRs per motor trial  (6 x 1.5 = 9 s)
 TRs_dummy_scans = 0     # TRs of dummy scans before experiment starts
 TRs_rest = 6            # TRs per rest period   (6 x 1.5 = 9 s)
+TRs_final_rest = 10     # TRs of rest after the last block (10 x 1.5 = 15 s)
 TRs_instruction = 2     # TRs for initial instruction screen
 
 # ---------------------------------------------------------------------------
 # Conditions
 # ---------------------------------------------------------------------------
-# Each condition is presented once per block in a randomised order.
+# Each condition is presented once per block, in the run order chosen at the
+# start: a preset OpenRecon order from src/run_orders.py, or a balanced random
+# order. The names must match those in src/run_orders.py.
 # cond_codes are written alongside onset files for analysis pipelines.
 # Code 5 is reserved for the scanner trigger by convention.
 COND_NAMES = [
@@ -31,8 +34,9 @@ COND_CODES = [1, 2, 3, 4, 6, 7, 8]
 # ---------------------------------------------------------------------------
 # Experiment structure
 # ---------------------------------------------------------------------------
-BLOCKS = 2
-# Derived -- one trial per condition per block. Change COND_NAMES to adjust.
+BLOCKS = 4                  # 1 to 8; 4 recommended. Must be a block count in src/run_orders.py
+MID_BLOCK_REST_AFTER = 4    # a TRs_rest rest follows this trial in every block
+# Derived -- one trial per condition per block.
 TRIALS_PER_BLOCK = len(COND_NAMES)
 
 # ---------------------------------------------------------------------------
