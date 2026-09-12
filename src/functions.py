@@ -57,8 +57,11 @@ def resource_path(relative_path: str) -> str:
 # ---------------------------------------------------------------------------
 
 def create_window() -> visual.Window:
-    """Create and return the fullscreen PsychoPy window."""
-    return visual.Window(
+    """Create and return the PsychoPy window, with the mouse cursor hidden.
+
+    PsychoPy shows the cursor again when the window closes.
+    """
+    win = visual.Window(
         fullscr=FULL_SCREEN,
         screen=0,
         color=BACKGROUND_COLOR,
@@ -66,6 +69,8 @@ def create_window() -> visual.Window:
         units="height",
         waitBlanking=True,
     )
+    win.mouseVisible = False
+    return win
 
 
 def load_countdown_images(win: visual.Window) -> list:
