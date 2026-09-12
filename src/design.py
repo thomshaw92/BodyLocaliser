@@ -43,7 +43,8 @@ def main(argv):
         run_order = int(run_order)
     subnum = int(argv[2]) if len(argv) > 2 else 1
 
-    schedule = generate_trial_schedule(run_order_blocks(1, subnum))
+    orders = [run_order] if run_order is not None else list(RUN_ORDERS[BLOCKS])
+    schedule = generate_trial_schedule(run_order_blocks(orders[0], subnum))
     scan = sum(e["duration"] for e in schedule)
     print("BodyLocaliser design, from src/parameters.py")
     print(f"  blocks             {BLOCKS}  (run_orders.py holds {min(RUN_ORDERS)} to {max(RUN_ORDERS)})")
@@ -57,7 +58,7 @@ def main(argv):
     print(f"  preset run orders  {min(RUN_ORDERS[BLOCKS])} to {max(RUN_ORDERS[BLOCKS])}, "
           f"plus balanced random")
 
-    for k in [run_order] if run_order is not None else list(RUN_ORDERS[BLOCKS]):
+    for k in orders:
         show(k, subnum)
 
 

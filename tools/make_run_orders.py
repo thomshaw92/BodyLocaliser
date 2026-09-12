@@ -52,10 +52,6 @@ def transitions(run):
     return [(a, b) for block in run for a, b in zip(block, block[1:])]
 
 
-def third(place):
-    return 0 if place < EARLY else 1 if place == EARLY else 2
-
-
 def rules_ok(run):
     """The boundary and place rules; the search itself enforces the pair and step rules."""
     if any(run[i][-1] == run[i + 1][0] for i in range(len(run) - 1)):
@@ -63,8 +59,8 @@ def rules_ok(run):
     places = [[block.index(c) for block in run] for c in range(N)]
     if len(run) >= 3:
         return all(min(p) < EARLY and max(p) > EARLY for p in places)
-    if len(run) == 2:
-        return all(third(p[0]) != third(p[1]) for p in places)
+    if len(run) == 2:          # not in the same third of the block twice
+        return all((p[0] < EARLY, p[0] > EARLY) != (p[1] < EARLY, p[1] > EARLY) for p in places)
     return True
 
 
@@ -75,11 +71,12 @@ def search_bases(blocks, rng):
         return [[list((0,) + p)] for p in itertools.permutations(range(1, N))]
 
     limit = 1 if 6 * blocks <= N * (N - 1) else 2
-    bases, budget_left = [], NODES_PER_COUNT
+    bases, used, try_start = [], 0, 0
 
-    def grow(run, block, pairs, steps, nodes):
-        nodes[0] -= 1
-        if nodes[0] <= 0:
+    def grow(run, block, pairs, steps):
+        nonlocal used
+        used += 1
+        if used - try_start >= NODES_PER_TRY:
             return None
         if len(block) == N:
             run = run + [block]
@@ -87,7 +84,7 @@ def search_bases(blocks, rng):
                 return run if rules_ok(run) else None
             for start in rng.sample(range(N), N):
                 if start != block[-1]:
-                    found = grow(run, [start], pairs, steps, nodes)
+                    found = grow(run, [start], pairs, steps)
                     if found:
                         return found
             return None
@@ -98,17 +95,16 @@ def search_bases(blocks, rng):
                 continue
             steps[step] -= 1
             pairs[(u, v)] += 1
-            found = grow(run, block + [v], pairs, steps, nodes)
+            found = grow(run, block + [v], pairs, steps)
             if found:
                 return found
             steps[step] += 1
             pairs[(u, v)] -= 1
         return None
 
-    while len(bases) < WANT and budget_left > 0:
-        nodes = [min(NODES_PER_TRY, budget_left)]
-        base = grow([], [0], Counter(), [blocks] * N, nodes)
-        budget_left -= min(NODES_PER_TRY, budget_left) - max(nodes[0], 0)
+    while len(bases) < WANT and used < NODES_PER_COUNT:
+        try_start = used
+        base = grow([], [0], Counter(), [blocks] * N)
         if base:
             bases.append(base)
     return bases
@@ -134,10 +130,9 @@ def block_hrf(t):
 
 PEAK = block_hrf(np.arange(0, 40, 0.0005)).max()
 EYE = np.eye(N)
-PAIRS = list(itertools.combinations(range(N), 2))
-CONTRASTS = np.vstack([EYE, EYE - (1 - EYE) / (N - 1),              # 7 vs rest, 7 vs other six,
-                       [EYE[i] - EYE[j] for i, j in PAIRS]])        # 21 pairwise
+CONTRASTS = np.vstack([EYE, EYE - (1 - EYE) / (N - 1)])   # 7 vs rest, then 7 vs the other six
 OTHERS = slice(N, 2 * N)
+PAIRWISE = np.array([EYE[i] - EYE[j] for i, j in itertools.combinations(range(N), 2)])
 MODELS = {}
 
 
@@ -151,14 +146,14 @@ def model(blocks):
     return MODELS[blocks]
 
 
-def nsd(run):
+def nsd(run, contrasts=CONTRASTS):
     """Normalised SD of each contrast, sqrt(diag(C (X'X)^-1 C')), as 3dDeconvolve -nodata prints."""
     T, drift, _ = model(len(run))
     ons, _ = onsets(run)
     stim = np.column_stack([sum(block_hrf(T - o) for o in ons[c]) / PEAK for c in range(N)])
     X = np.hstack([drift, stim])
     V = np.linalg.inv(X.T @ X)[-N:, -N:]
-    return np.sqrt(np.einsum("ij,jk,ik->i", CONTRASTS, V, CONTRASTS))
+    return np.sqrt(np.einsum("ij,jk,ik->i", contrasts, V, contrasts))
 
 
 def check_set(orders):
@@ -191,12 +186,13 @@ def main():
                        for k, r in enumerate(orders, 1)}
 
         E = np.array([nsd(r) for r in orders])
-        _, total = onsets(orders[0])
+        worst_pair = max(nsd(r, PAIRWISE).max() for r in orders)
+        total = model(blocks)[2]
         print(f"{blocks} block{'s' if blocks > 1 else ' '}: {total:4.0f} s, "
               f"{round(total / TR):3d} measurements, {len(bases):3d} bases in {time.time() - started:5.1f} s;"
               f"  vs rest {E[:, :N].min():.4f}-{E[:, :N].max():.4f}"
               f"  vs other six {E[:, OTHERS].min():.4f}-{E[:, OTHERS].max():.4f}"
-              f"  worst pairwise {E[:, 2 * N:].max():.4f}")
+              f"  worst pairwise {worst_pair:.4f}")
 
     print(f"\nrun orders for the {BLOCKS} blocks set in parameters.py:")
     for k, order in out[BLOCKS].items():

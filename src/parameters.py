@@ -21,23 +21,18 @@ TRs_instruction = 2     # TRs for initial instruction screen
 # Each condition is presented once per block, in the run order chosen at the
 # start: a preset OpenRecon order from src/run_orders.py, or a balanced random
 # order. The names must match those in src/run_orders.py.
-# cond_codes are written alongside onset files for analysis pipelines.
-# Code 5 is reserved for the scanner trigger by convention.
 COND_NAMES = [
     "LEFT ELBOW", "RIGHT ELBOW",
     "LEFT HAND",  "RIGHT HAND",
     "LEFT FOOT",  "RIGHT FOOT",
     "TONGUE",
 ]
-COND_CODES = [1, 2, 3, 4, 6, 7, 8]
 
 # ---------------------------------------------------------------------------
 # Experiment structure
 # ---------------------------------------------------------------------------
 BLOCKS = 4                  # 1 to 8; 4 recommended. Must be a block count in src/run_orders.py
 MID_BLOCK_REST_AFTER = 4    # a TRs_rest rest follows this trial in every block
-# Derived -- one trial per condition per block.
-TRIALS_PER_BLOCK = len(COND_NAMES)
 
 # ---------------------------------------------------------------------------
 # Countdown images
@@ -50,8 +45,8 @@ NUM_COUNTDOWN_IMAGES = 12
 # ---------------------------------------------------------------------------
 # Display
 # ---------------------------------------------------------------------------
-INSTRUCTION_TEXT_SIZE = 0.08   # 8% of window height
-TRIAL_TEXT_SIZE = 0.09         # 9% of window height  (currently unused -- reserved)
+INSTRUCTION_TEXT_SIZE = 0.08   # 8% of window height  (instructions, waiting screen)
+TRIAL_TEXT_SIZE = 0.09         # 9% of window height  (the MOVE <body part> cue)
 FIXATION_TEXT_SIZE = 0.11      # 11% of window height
 COUNTDOWN_IMAGE_SIZE = (0.4, 0.4)
 COUNTDOWN_IMAGE_POSITION = (0, 0.2)  # offset upward from centre

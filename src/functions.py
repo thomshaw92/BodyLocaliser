@@ -21,6 +21,7 @@ from parameters import (
     INSTRUCTION_TEXT_SIZE,
     NUM_COUNTDOWN_IMAGES,
     TEXT_COLOR,
+    TRIAL_TEXT_SIZE,
 )
 from run_orders import RUN_ORDERS
 
@@ -113,9 +114,9 @@ def get_subject_info() -> dict:
 
         if not initials:
             error = "Participant initials cannot be empty."
-        elif not _is_integer(raw_sub):
+        elif not raw_sub.isdecimal():
             error = f"Subject number '{raw_sub}' must be a whole number."
-        elif not _is_integer(raw_run):
+        elif not raw_run.isdecimal():
             error = f"Run number '{raw_run}' must be a whole number."
         else:
             return {
@@ -127,16 +128,8 @@ def get_subject_info() -> dict:
         logger.error(error)
 
 
-def _is_integer(text: str) -> bool:
-    try:
-        int(text)
-    except ValueError:
-        return False
-    return True
-
-
-RUN_ORDER_CHOICES = {"Balanced random (seeded on subject number)": "random"}
-RUN_ORDER_CHOICES.update({f"OpenRecon run order {k}": k for k in sorted(RUN_ORDERS[BLOCKS])})
+RUN_ORDER_CHOICES = {"Balanced random (seeded on subject number)": "random",
+                     **{f"OpenRecon run order {k}": k for k in sorted(RUN_ORDERS[BLOCKS])}}
 
 
 def ask_run_order():
@@ -315,7 +308,7 @@ def run_trial(
         win,
         text=f"MOVE {condition}",
         color=TEXT_COLOR,
-        height=INSTRUCTION_TEXT_SIZE,
+        height=TRIAL_TEXT_SIZE,
         units="height",
     )
 
