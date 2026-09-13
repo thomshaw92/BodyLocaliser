@@ -83,12 +83,16 @@ Data is saved to `data/sub-{N}_{initials}/`, with every file named
 | `BodyLoc_sub-..._*.csv` | The run as it happened: measured onset and duration of every epoch |
 | `..._{CONDITION}_*.1D` | Onsets per condition in seconds, for AFNI |
 | `..._triggers_*.csv` | Every scanner trigger: volume, time from the first one, interval, and drift from the ideal TR grid |
-| `..._presentation_order_*.txt` | The run in readable form, headed with the screen's refresh rate |
+| `..._presentation_order_*.txt` | The run in readable form, headed with the screen's refresh rate and how far the run clock starts after the first trigger |
 | `parameters_order-*.py` | A copy of `src/parameters.py` as it was for that run |
 
 The trigger file is the check on the scanner rather than on the task: `interval` should sit
 at `TR`, and `drift` shows how far the volume count has slipped. The task also logs the
 number of triggers against the measurements it expected, and warns if they disagree.
+
+The trigger file is timed from the first trigger; the run log is timed from the start of the
+run, which is the same instant only when `TRs_dummy_scans` is 0. The gap between them is in the
+presentation order file's header, so the two can always be lined up.
 
 ## Building a standalone executable
 

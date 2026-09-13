@@ -180,7 +180,7 @@ def main():
         logger.warning("Only %.1f frames per countdown image; this screen cannot keep up",
                        frames_per_image)
 
-    triggers = None
+    triggers, run_start = None, None
     try:
         # ---- Instructions & trigger ----
         show_instruction(win, TR, TRs_instruction)
@@ -199,6 +199,11 @@ def main():
 
         # ---- Global clock starts now ----
         global_clock = core.Clock()
+        # The run log is timed from here, the trigger file from the first trigger. They
+        # are the same instant only when there are no dummy scans, so record the gap
+        # rather than leave anyone aligning the two files to assume it.
+        run_start = triggers.clock.getTime() - triggers.times[0]
+        logger.info("Run clock starts %+.4f s after the first trigger", run_start)
 
         # ---- Run rests and trials from schedule ----
         # Every entry ends at its scheduled time on the global clock, so a flip that
@@ -249,7 +254,9 @@ def main():
         save_presentation_order(
             schedule,
             os.path.join(data_dir, f"{prefix}_presentation_order_{datetag}.txt"),
-            header=f"Screen: {refresh:.1f} Hz" if refresh else "Screen: refresh not measured",
+            header=("Screen: " + (f"{refresh:.1f} Hz" if refresh else "refresh not measured")
+                    + ("" if run_start is None else
+                       f"; run clock starts {run_start:+.4f} s after the first trigger")),
         )
 
         if triggers is not None:
