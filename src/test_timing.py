@@ -100,9 +100,12 @@ drift_worst = max(abs(a - b) for a, b in zip(drift_onsets, scheduled))
 assert worst < TOLERANCE, f"onset off by {worst:.3f} s, more than one refresh"
 assert abs(end - planned) < TOLERANCE, f"run ended {end - planned:+.3f} s off"
 assert round(end / TR) == round(planned / TR), "the run no longer fits its measurements"
-# The fixed-wait case has to be worse, or this check is not measuring anything.
+# The fixed-wait case has to be worse, or this check is not measuring anything. Its error
+# grows with the number of epochs, which is the point; whether that crosses a volume boundary
+# depends on how long the run is, so it is reported rather than asserted.
 assert drift_worst > TOLERANCE, "the fixed-wait pattern did not drift; check FLIP_COST"
-assert round(drift_end / TR) > round(planned / TR), "the fixed-wait pattern no longer costs a volume"
+assert drift_end - planned > 0.5 * len(schedule) * NUM_COUNTDOWN_IMAGES * FLIP_COST, \
+    "the fixed-wait pattern did not accumulate; check FLIP_COST"
 
 print(f"OK: {BLOCKS} blocks, {len(schedule)} epochs, {measurements(schedule)} measurements planned")
 print(f"  scheduled targets: ends {end - planned:+.3f} s off {planned:.1f} s, "

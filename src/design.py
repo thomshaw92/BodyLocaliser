@@ -30,7 +30,8 @@ def show(run_order, subnum):
     print(f"\n{label}")
     for number, block in enumerate(blocks, start=1):
         print(f"  block {number}: " + ", ".join(block))
-    print("  onsets, seconds from the first trigger (volume number in brackets):")
+    print("  onsets, seconds from the first trigger, which is volume 0 at time 0 "
+          "(volume index in brackets, counting from 0):")
     for name in list(COND_NAMES) + ["REST"]:
         onsets = [e["simulated_onset"] for e in schedule if e["condition"] == name]
         print(f"    {name:12s} " + " ".join(f"{o:6.1f} ({round(o / TR) + TRs_dummy_scans:3d})"
