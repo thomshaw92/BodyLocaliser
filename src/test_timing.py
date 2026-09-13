@@ -9,6 +9,7 @@ cost measured below, a 4-block run overruns by about 1.5 s and needs an extra
 volume. Holding each image to an absolute target does not. This checks that the
 scheduled times are met, and that the fixed-wait pattern would still fail.
 """
+import logging
 import sys
 import types
 
@@ -165,9 +166,50 @@ pending.append(("5", now))
 wait_until(now - 5.0, clock, triggers)
 assert len(triggers.times) == len(expected) + 1, "a late epoch skipped its poll"
 
+# ---------------------------------------------------------------------------
+# The parallel trigger, which no hardware here can exercise
+# ---------------------------------------------------------------------------
+# Pin 10 is read from a script of 1s and 0s, so the rising edge is tested exactly.
+# A pulse narrower than the poll interval, about 0.5 ms, falls between polls and is
+# missed; real scanner pulses are milliseconds wide.
+parallel = types.ModuleType("psychopy.parallel")
+
+
+class ScriptedPort:
+    def __init__(self, address=None):
+        self.values, self.i = [], 0
+
+    def readPin(self, pin):
+        assert pin == 10, f"read pin {pin}, expected 10"
+        v = self.values[min(self.i, len(self.values) - 1)]
+        self.i += 1
+        return v
+
+
+logging.getLogger("functions").setLevel(logging.ERROR)   # two cases start high on purpose
+parallel.ParallelPort = ScriptedPort
+psychopy.parallel = parallel
+sys.modules["psychopy.parallel"] = parallel
+
+for label, values, expect in [
+    ("held high across polls is one trigger", [0, 1, 1, 1, 1, 1, 0, 0], 1),
+    ("two separate pulses", [0, 1, 1, 0, 0, 1, 1, 0], 2),
+    ("line already high when the run starts", [1, 1, 1, 1, 0, 0, 0, 0], 0),
+    ("already high, then a real pulse", [1, 1, 1, 0, 0, 1, 1, 0], 1),
+    ("line stuck high throughout", [1, 1, 1, 1, 1, 1, 1, 1], 0),
+]:
+    log = TriggerLog(Clock(), "parallel", None, port_address=0x0378)
+    log._port.values = values
+    log.flush()
+    log._port.i = 1                       # flush consumed the first read
+    for _ in range(len(values) - 1):
+        log.poll()
+    assert len(log.times) == expect, f"parallel, {label}: {len(log.times)} not {expect}"
+
 print(f"OK: {BLOCKS} blocks, {len(schedule)} epochs, {measurements(schedule)} measurements planned")
 print(f"  scheduled targets: ends {end - planned:+.3f} s off {planned:.1f} s, "
       f"worst onset {worst:.3f} s off")
 print(f"  fixed wait:        ends {drift_end - planned:+.3f} s off, worst onset {drift_worst:.3f} s off, "
       f"{round(drift_end / TR) - round(planned / TR):+d} measurements")
 print(f"  triggers:          {len(triggers.times)} recorded, stale ones flushed, none missed when late")
+print("  parallel port:     rising edge only, no false start on a line already high")

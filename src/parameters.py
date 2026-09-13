@@ -72,4 +72,5 @@ SCREEN = 0                     # which display to use: 0 is the first, 1 the
 TRIGGER_INPUT_METHOD = "key"
 TRIGGER_VALUE = "5"            # key or byte value to wait for
 PORT_ADDRESS = None            # hex address for parallel port (e.g. 0x0378)
+# A parallel trigger is the rising edge of pin 10, polled every 0.5 ms.
 SERIAL_PORT = None             # device path for serial port (e.g. '/dev/ttyUSB0')

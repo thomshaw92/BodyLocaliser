@@ -217,7 +217,7 @@ class TriggerLog:
             while self._port.in_waiting:
                 if self._port.read() == self._want:
                     self.times.append(self.clock.getTime())
-        else:
+        elif self.method == "parallel":
             is_high = bool(self._port.readPin(10))
             if is_high and not self._was_high:      # the rising edge is the trigger
                 self.times.append(self.clock.getTime())
@@ -233,8 +233,11 @@ class TriggerLog:
             event.clearEvents()
         elif self.method == "serial":
             self._port.reset_input_buffer()
-        else:
+        elif self.method == "parallel":
             self._was_high = bool(self._port.readPin(10))
+            if self._was_high:
+                logger.warning("Parallel pin 10 is already high. If it stays high no trigger "
+                               "will be seen; check PORT_ADDRESS and the cable.")
         self.times.clear()
 
     def close(self):

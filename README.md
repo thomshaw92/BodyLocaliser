@@ -48,7 +48,7 @@ All tuneable settings live in `src/parameters.py`:
 | `BLOCKS` | 4 | Blocks per run: 1 to 8, with 4 recommended (see Advanced use) |
 | `MID_BLOCK_REST_AFTER` | `None` | A rest follows this trial in every block; `None` centres it on the movements |
 | `COND_NAMES` | 7 body parts | The movements, one trial each per block (see Advanced use) |
-| `TRIGGER_INPUT_METHOD` | `'key'` | `'key'`, `'parallel'`, or `'serial'` |
+| `TRIGGER_INPUT_METHOD` | `'key'` | Usually `'key'`, an interface box sending keypresses; `'serial'` and `'parallel'` also work |
 | `TRIGGER_VALUE` | `'5'` | Key or byte the scanner sends |
 | `FULL_SCREEN` | `True` | Set `False` for windowed testing |
 | `SCREEN` | 0 | Which display to use; set 1 if the projector is the second display |
