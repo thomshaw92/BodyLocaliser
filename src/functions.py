@@ -133,30 +133,28 @@ def get_subject_info() -> dict:
         logger.error(error)
 
 
-RUN_ORDER_CHOICES = {"Balanced random (seeded on subject number)": "random",
-                     **{f"OpenRecon run order {k}": k for k in sorted(RUN_ORDERS[BLOCKS])}}
-
-
 def ask_run_order():
-    """Ask which run order to present: a preset OpenRecon order (returns 1-7) or a
-    balanced random order (returns "random").
+    """Ask which run order to present: a preset OpenRecon order (returns 1 to the number
+    of movements) or a balanced random order (returns "random").
 
     Nothing is preselected, so the operator has to choose; leaving it unchosen is
     reported in red in the dialog. Calls core.quit() if the user cancels it.
     """
+    choices = {"Balanced random (seeded on subject number)": "random",
+               **{f"OpenRecon run order {k}": k for k in sorted(RUN_ORDERS[BLOCKS])}}
     error = ""
     while True:
         dlg = gui.Dlg(title="Run order")
         if error:
             dlg.addText(error, color="red")
         dlg.addText("For OpenRecon, pick the run order set on the scanner protocol card.")
-        dlg.addField("Run order:", choices=["Choose...", *RUN_ORDER_CHOICES])
+        dlg.addField("Run order:", choices=["Choose...", *choices])
         data = dlg.show()
 
         if not dlg.OK:
             core.quit()
-        if data[0] in RUN_ORDER_CHOICES:
-            return RUN_ORDER_CHOICES[data[0]]
+        if data[0] in choices:
+            return choices[data[0]]
         error = "Please choose a run order."
         logger.error(error)
 
@@ -265,10 +263,13 @@ def show_fixation(
     stim = visual.TextStim(
         win, text=text, color=TEXT_COLOR, height=FIXATION_TEXT_SIZE, units="height"
     )
-    for _ in range(TRs_duration):
+    clock = core.Clock()
+    for i in range(1, TRs_duration + 1):
         stim.draw()
         win.flip()
-        core.wait(TR)
+        remaining = i * TR - clock.getTime()
+        if remaining > 0:
+            core.wait(remaining)
 
 
 def handle_dummy_scans(
@@ -286,28 +287,40 @@ def handle_dummy_scans(
 def _display_countdown(
     win: visual.Window,
     images: list,
-    display_time: float,
     overlay_text: visual.TextStim,
+    clock: core.Clock,
+    start: float,
+    end: float,
 ) -> None:
-    """Cycle through countdown images with a text overlay."""
-    for img in images:
+    """Cycle through the countdown images between *start* and *end* on *clock*.
+
+    Each image is held until its own absolute target time, so the latency of a
+    flip is absorbed by the image it belongs to. Holding each image for a fixed
+    time after its flip makes that latency cumulative instead, lengthening every
+    epoch and the run with it.
+    """
+    step = (end - start) / len(images)
+    for i, img in enumerate(images, start=1):
+        check_quit_key()        # so Escape acts within one image, not one epoch
         img.draw()
         overlay_text.draw()
         win.flip()
-        core.wait(display_time)
+        remaining = start + i * step - clock.getTime()
+        if remaining > 0:
+            core.wait(remaining)
 
 
 def run_trial(
     win: visual.Window,
     condition: str,
-    TR: float,
-    TRs_per_trial: int,
     countdown_images: list,
     global_clock: core.Clock,
-) -> tuple:
-    """Run a single motor-imagery trial.
+    end_time: float,
+) -> float:
+    """Run a single motor-imagery trial, ending at *end_time* on *global_clock*.
 
-    Returns (onset_time, duration) measured from *global_clock*.
+    *end_time* comes from the schedule, so a trial that starts late is shortened
+    rather than pushing everything after it later. Returns the onset time.
     """
     trial_text = visual.TextStim(
         win,
@@ -317,27 +330,25 @@ def run_trial(
         units="height",
     )
 
-    trial_duration = TR * TRs_per_trial
-    display_time = trial_duration / len(countdown_images)
-
     onset_time = global_clock.getTime()
     logger.debug("Trial %s started at %.3f s", condition, onset_time)
 
-    _display_countdown(win, countdown_images, display_time, trial_text)
+    _display_countdown(win, countdown_images, trial_text, global_clock, onset_time, end_time)
 
-    end_time = global_clock.getTime()
-    logger.debug("Trial %s ended at %.3f s", condition, end_time)
-
-    return onset_time, end_time - onset_time
+    logger.debug("Trial %s ended at %.3f s", condition, global_clock.getTime())
+    return onset_time
 
 
 def show_rest_with_countdown(
     win: visual.Window,
-    TR: float,
-    TRs_duration: int,
     countdown_images: list,
-) -> None:
-    """Display a REST screen with the countdown timer."""
+    global_clock: core.Clock,
+    end_time: float,
+) -> float:
+    """Display a REST screen with the countdown, ending at *end_time* on *global_clock*.
+
+    Returns the onset time.
+    """
     rest_text = visual.TextStim(
         win,
         text="REST",
@@ -345,6 +356,6 @@ def show_rest_with_countdown(
         height=FIXATION_TEXT_SIZE,
         units="height",
     )
-    rest_duration = TR * TRs_duration
-    display_time = rest_duration / len(countdown_images)
-    _display_countdown(win, countdown_images, display_time, rest_text)
+    onset_time = global_clock.getTime()
+    _display_countdown(win, countdown_images, rest_text, global_clock, onset_time, end_time)
+    return onset_time
