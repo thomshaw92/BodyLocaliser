@@ -12,9 +12,11 @@ from parameters import (
     MID_BLOCK_REST_AFTER,
     NUM_COUNTDOWN_IMAGES,
     PORT_ADDRESS,
+    SCREEN,
     SERIAL_PORT,
     TR,
     TRIGGER_INPUT_METHOD,
+    TRIGGER_VALUE,
     TRs_dummy_scans,
     TRs_final_rest,
     TRs_instruction,
@@ -27,6 +29,20 @@ from run_orders import RUN_ORDERS
 def file_safe(text):
     """True if *text* can go into an output file or directory name unchanged."""
     return bool(re.fullmatch(r"[A-Za-z0-9 _-]+", str(text)))
+
+
+def trigger_byte(value):
+    """The single byte a serial trigger must match, or None if *value* is not one byte.
+
+    parameters.py documents TRIGGER_VALUE as a key or a byte value, so both a one
+    character string and an integer 0 to 255 are accepted.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return bytes([value]) if 0 <= value <= 255 else None
+    encoded = str(value).encode("utf-8")
+    return encoded if len(encoded) == 1 else None
 
 
 def centred_rest(n):
@@ -158,6 +174,8 @@ def check_parameters():
     if not isinstance(NUM_COUNTDOWN_IMAGES, int) or NUM_COUNTDOWN_IMAGES < 1:
         problems.append(f"NUM_COUNTDOWN_IMAGES must be a whole number, 1 or more, not "
                         f"{NUM_COUNTDOWN_IMAGES!r}")
+    if not isinstance(SCREEN, int) or isinstance(SCREEN, bool) or SCREEN < 0:
+        problems.append(f"SCREEN must be a display number, 0 or more, not {SCREEN!r}")
     if TRIGGER_INPUT_METHOD not in ("key", "parallel", "serial"):
         problems.append(f"TRIGGER_INPUT_METHOD must be key, parallel or serial, "
                         f"not {TRIGGER_INPUT_METHOD!r}")
@@ -165,6 +183,12 @@ def check_parameters():
         problems.append("TRIGGER_INPUT_METHOD is parallel, so PORT_ADDRESS must be set")
     elif TRIGGER_INPUT_METHOD == "serial" and SERIAL_PORT is None:
         problems.append("TRIGGER_INPUT_METHOD is serial, so SERIAL_PORT must be set")
+    elif TRIGGER_INPUT_METHOD == "serial" and trigger_byte(TRIGGER_VALUE) is None:
+        problems.append(f"TRIGGER_VALUE must be one byte for a serial trigger: a single "
+                        f"character or a whole number 0 to 255, not {TRIGGER_VALUE!r}")
+    elif TRIGGER_INPUT_METHOD == "key" and not (isinstance(TRIGGER_VALUE, str) and TRIGGER_VALUE):
+        problems.append(f"TRIGGER_VALUE must be a key name for a key trigger, "
+                        f"not {TRIGGER_VALUE!r}")
 
     if problems:
         raise SystemExit("src/parameters.py:\n  " + "\n  ".join(problems))

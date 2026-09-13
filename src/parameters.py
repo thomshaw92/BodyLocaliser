@@ -62,6 +62,8 @@ BACKGROUND_COLOR = "black"
 TEXT_COLOR = "yellow"
 
 FULL_SCREEN = True
+SCREEN = 0                     # which display to use: 0 is the first, 1 the
+                               # second, so set 1 if the projector is the second display
 
 # ---------------------------------------------------------------------------
 # Scanner trigger

@@ -20,11 +20,12 @@ from parameters import (
     FULL_SCREEN,
     INSTRUCTION_TEXT_SIZE,
     NUM_COUNTDOWN_IMAGES,
+    SCREEN,
     TEXT_COLOR,
     TRIAL_TEXT_SIZE,
 )
 from run_orders import RUN_ORDERS
-from schedule import file_safe
+from schedule import file_safe, trigger_byte
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ def create_window() -> visual.Window:
     """
     win = visual.Window(
         fullscr=FULL_SCREEN,
-        screen=0,
+        screen=SCREEN,
         color=BACKGROUND_COLOR,
         colorSpace="rgb",
         units="height",
@@ -201,13 +202,16 @@ def wait_for_trigger(
             raise ValueError("serial_port is required for serial trigger input.")
         import serial as pyserial  # imported here -- not available on every platform
 
+        want = trigger_byte(trigger_value)
+        if want is None:
+            raise ValueError(f"trigger_value {trigger_value!r} is not a single byte.")
         ser = pyserial.Serial(serial_port, 9600, timeout=1)
         logger.info("Waiting for serial port trigger on %s ...", serial_port)
         while True:
-            if ser.in_waiting > 0:
-                signal = ser.read().decode("utf-8")
-                if signal == trigger_value:
-                    break
+            # Compared as raw bytes: a scanner pulse need not be text, and decoding
+            # one that is not valid UTF-8 used to raise here, while waiting.
+            if ser.in_waiting > 0 and ser.read() == want:
+                break
             core.wait(0.001)
         logger.info("Trigger received (serial port)")
 

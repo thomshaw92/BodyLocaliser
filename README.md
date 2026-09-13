@@ -51,6 +51,7 @@ All tuneable settings live in `src/parameters.py`:
 | `TRIGGER_INPUT_METHOD` | `'key'` | `'key'`, `'parallel'`, or `'serial'` |
 | `TRIGGER_VALUE` | `'5'` | Key or byte the scanner sends |
 | `FULL_SCREEN` | `True` | Set `False` for windowed testing |
+| `SCREEN` | 0 | Which display to use; set 1 if the projector is the second display |
 
 ## Advanced use
 
