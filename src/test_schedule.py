@@ -7,7 +7,6 @@ from collections import Counter
 from parameters import (
     BLOCKS,
     COND_NAMES,
-    MID_BLOCK_REST_AFTER,
     TR,
     TRs_dummy_scans,
     TRs_final_rest,
@@ -15,11 +14,12 @@ from parameters import (
     TRs_rest,
 )
 from run_orders import RUN_ORDERS
-from schedule import check_parameters, generate_trial_schedule, measurements, run_order_blocks
+from schedule import (MID_REST, check_parameters, generate_trial_schedule, measurements,
+                      run_order_blocks)
 
 N = len(COND_NAMES)
 TRIAL, REST, FINAL = TR * TRs_per_trial, TR * TRs_rest, TR * TRs_final_rest
-MID_AFTER = min(MID_BLOCK_REST_AFTER, N)          # trials before the rest inside a block
+MID_AFTER = min(MID_REST, N)          # trials before the rest inside a block
 HAS_MID = 0 < MID_AFTER < N
 BLOCK_LAYOUT = "M" * MID_AFTER + "R" * HAS_MID + "M" * (N - MID_AFTER) + "R"
 

@@ -44,8 +44,9 @@ from scipy.special import gammainc
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from parameters import (BLOCKS, COND_NAMES, MID_BLOCK_REST_AFTER, TR,  # noqa: E402
+from parameters import (BLOCKS, COND_NAMES, TR,  # noqa: E402
                         TRs_final_rest, TRs_per_trial, TRs_rest)
+from schedule import MID_REST  # noqa: E402  -- resolves a MID_BLOCK_REST_AFTER of None
 
 N = len(COND_NAMES)
 BLOCK_COUNTS = range(1, 9)
@@ -134,7 +135,7 @@ def onsets(run):
         for place, c in enumerate(block):
             ons[c].append(t)
             t += EPOCH
-            if place + 1 == MID_BLOCK_REST_AFTER:
+            if place + 1 == MID_REST:
                 t += REST
         t += REST
     return ons, t - REST + FINAL_REST
@@ -212,7 +213,7 @@ def exceptions(out, limits):
 def main():
     out, limits = {}, {}
     print(f"{len(COND_NAMES)} movements, {EPOCH:.0f} s each; rest {REST:.0f} s after movement "
-          f"{MID_BLOCK_REST_AFTER} and after each block; final rest {FINAL_REST:.0f} s\n")
+          f"{MID_REST} and after each block; final rest {FINAL_REST:.0f} s\n")
     for blocks in BLOCK_COUNTS:
         started = time.time()
         bases, limit = search_bases(blocks, random.Random(SEED + blocks))

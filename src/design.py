@@ -12,7 +12,6 @@ import sys
 from parameters import (
     BLOCKS,
     COND_NAMES,
-    MID_BLOCK_REST_AFTER,
     TR,
     TRs_dummy_scans,
     TRs_final_rest,
@@ -20,7 +19,8 @@ from parameters import (
     TRs_rest,
 )
 from run_orders import RUN_ORDERS
-from schedule import check_parameters, generate_trial_schedule, measurements, run_order_blocks
+from schedule import (MID_REST, check_parameters, generate_trial_schedule, measurements,
+                      run_order_blocks)
 
 
 def show(run_order, subnum):
@@ -51,7 +51,7 @@ def main(argv):
     print("BodyLocaliser design, from src/parameters.py")
     print(f"  blocks             {BLOCKS}  (run_orders.py holds {min(RUN_ORDERS)} to {max(RUN_ORDERS)})")
     print(f"  movements          {len(COND_NAMES)}, {TRs_per_trial} TRs each")
-    print(f"  rest               {TRs_rest} TRs, after trial {MID_BLOCK_REST_AFTER} of each block "
+    print(f"  rest               {TRs_rest} TRs, after trial {MID_REST} of each block "
           f"and after each block")
     print(f"  final rest         {TRs_final_rest} TRs")
     print(f"  dummy scans        {TRs_dummy_scans} TRs")

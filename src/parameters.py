@@ -34,7 +34,10 @@ COND_NAMES = [
 # Experiment structure
 # ---------------------------------------------------------------------------
 BLOCKS = 4                  # 1 to 8; 4 recommended. Must be a block count in src/run_orders.py
-MID_BLOCK_REST_AFTER = 4    # a TRs_rest rest follows this trial in every block
+# A TRs_rest rest follows this trial in every block. None centres it on the movements,
+# ceil(len(COND_NAMES) / 2), which is 4 of the 7 below, so it follows if you change them.
+# Set a trial number to place it yourself, or 0 for no rest inside a block.
+MID_BLOCK_REST_AFTER = None
 
 # ---------------------------------------------------------------------------
 # Countdown images

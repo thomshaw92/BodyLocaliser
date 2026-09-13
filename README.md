@@ -46,7 +46,7 @@ All tuneable settings live in `src/parameters.py`:
 | `TRs_final_rest` | 10 | Rest after the last block in TRs |
 | `TRs_dummy_scans` | 0 | Dummy scans before first trial |
 | `BLOCKS` | 4 | Blocks per run: 1 to 8, with 4 recommended (see Advanced use) |
-| `MID_BLOCK_REST_AFTER` | 4 | A rest follows this trial in every block |
+| `MID_BLOCK_REST_AFTER` | `None` | A rest follows this trial in every block; `None` centres it on the movements |
 | `COND_NAMES` | 7 body parts | The movements, one trial each per block (see Advanced use) |
 | `TRIGGER_INPUT_METHOD` | `'key'` | `'key'`, `'parallel'`, or `'serial'` |
 | `TRIGGER_VALUE` | `'5'` | Key or byte the scanner sends |
@@ -59,7 +59,7 @@ All tuneable settings live in `src/parameters.py`:
 **Different body regions.** Add or remove movements by editing `COND_NAMES` in `src/parameters.py`, then rebuild the run orders with `python3 tools/make_run_orders.py` and check them with `python3 src/test_schedule.py`. Nothing else needs editing: the cue is drawn as text (`MOVE <region>`), so there is no image to add, and the run order dialog lists whatever `src/run_orders.py` holds. Two things follow from the number of movements:
 
 - **N movements give N run orders**, not always seven, and a block is N trials long, so the scan gets longer. `python3 src/design.py` prints the new length and measurement count.
-- **Set `MID_BLOCK_REST_AFTER` to about half the movement count.** It is a trial number, not a proportion, so it does not follow when `COND_NAMES` changes: left at 4 with five movements the rest falls after the 4th of 5 and strands the last movement between two rests. The task refuses a position leaving fewer than two movements on either side, so with five movements use 2 or 3, and with seven use 2 to 5. `0` turns the rest inside a block off, but keeping it is worth about 10% on the movement-vs-rest contrast and holds the longest unbroken run of movements to 27 s at five movements, against 45 s without. Changing it changes which run orders the generator picks, so rebuild afterwards.
+- **The rest inside a block follows on its own.** `MID_BLOCK_REST_AFTER` is `None` by default, which centres it, `ceil(movements / 2)` — trial 4 of seven movements, trial 3 of five — so there is nothing to adjust when you change `COND_NAMES`. Set a trial number to place it yourself and the task refuses one leaving fewer than two movements on either side; `0` turns it off, though keeping it is worth about 10% on the movement-vs-rest contrast and holds the longest unbroken run of movements to 27 s at five movements against 45 s without. Placing it yourself changes which run orders the generator picks, so rebuild afterwards.
 - **Balanced random has N! possible orders.** With the seven defaults that is 5040, and subjects 1 to 100 all get different orders. With five movements there are 120, and subjects start sharing orders early: 1 of the first 20 and 10 of the first 50.
 - **Not every movement count works at every block count.** Seven, six and eight movements all work from 1 to 8 blocks. Five movements has no valid run order at 2 blocks, and the generator leaves that block count out of `src/run_orders.py` and says so as it runs. Set `BLOCKS` to one that was left out and the task refuses at startup, naming the counts it does have.
 

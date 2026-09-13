@@ -24,6 +24,20 @@ from parameters import (
 from run_orders import RUN_ORDERS
 
 
+def centred_rest(n):
+    """Where the rest inside a block falls when MID_BLOCK_REST_AFTER is None.
+
+    The middle of the block, which needs at least two movements on each side; with
+    fewer than four movements there is no room and the block gets no interior rest.
+    """
+    return -(-n // 2) if n >= 4 else 0
+
+
+# What parameters.py asked for, with None resolved. Everything reads this, not the raw value.
+MID_REST = (centred_rest(len(COND_NAMES)) if MID_BLOCK_REST_AFTER is None
+            else MID_BLOCK_REST_AFTER)
+
+
 def run_order_blocks(run_order, subnum, blocks=BLOCKS):
     """Return the blocks (lists of conditions) for *run_order*.
 
@@ -44,7 +58,7 @@ def generate_trial_schedule(blocks):
     """Build the full list of rest and trial entries, starting with the initial rest.
 
     Each block presents its conditions in the given order, with a rest after
-    trial MID_BLOCK_REST_AFTER and after the block (TRs_final_rest after the
+    trial MID_REST and after the block (TRs_final_rest after the
     last block).
 
     Returns a list of dicts with keys:
@@ -61,7 +75,7 @@ def generate_trial_schedule(blocks):
                 "condition": condition,
                 "duration": TR * TRs_per_trial,
             })
-            if trial_num == MID_BLOCK_REST_AFTER:
+            if trial_num == MID_REST:
                 schedule.append({"block": block, "trial": "mid_rest", "condition": "REST", "duration": rest})
 
         last = block == len(blocks)
@@ -121,9 +135,11 @@ def check_parameters():
                                ("TRs_instruction", TRs_instruction, 0)]:
         if not isinstance(value, int) or value < least:
             problems.append(f"{name} must be a whole number of TRs, {least} or more, not {value!r}")
-    if not isinstance(MID_BLOCK_REST_AFTER, int) or not 0 <= MID_BLOCK_REST_AFTER < n:
-        problems.append(f"MID_BLOCK_REST_AFTER must be a whole number, 0 (no rest inside a block) "
-                        f"to {n - 1}, not {MID_BLOCK_REST_AFTER!r}")
+    if MID_BLOCK_REST_AFTER is None:
+        pass                                 # centred on the movements, so always in range
+    elif not isinstance(MID_BLOCK_REST_AFTER, int) or not 0 <= MID_BLOCK_REST_AFTER < n:
+        problems.append(f"MID_BLOCK_REST_AFTER must be None (centred), 0 (no rest inside a "
+                        f"block) or a whole number up to {n - 1}, not {MID_BLOCK_REST_AFTER!r}")
     elif MID_BLOCK_REST_AFTER and not 2 <= MID_BLOCK_REST_AFTER <= n - 2:
         # One movement between two rests is scanned in a different context from the rest of
         # its block, and the position does not follow COND_NAMES when it changes.
