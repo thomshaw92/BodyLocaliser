@@ -107,8 +107,67 @@ assert drift_worst > TOLERANCE, "the fixed-wait pattern did not drift; check FLI
 assert drift_end - planned > 0.5 * len(schedule) * NUM_COUNTDOWN_IMAGES * FLIP_COST, \
     "the fixed-wait pattern did not accumulate; check FLIP_COST"
 
+# ---------------------------------------------------------------------------
+# Recording the scanner triggers
+# ---------------------------------------------------------------------------
+# The scanner pulses at the start of each TR. These are queued as if they were key
+# presses, so the recorder can be checked without a scanner or a serial port.
+pending = []
+psychopy.event.getKeys = lambda keyList=None, timeStamped=None, **kw: [
+    (k, t) for k, t in [pending.pop(0) for _ in range(len(pending))]
+    if keyList is None or k in keyList
+]
+psychopy.event.clearEvents = lambda *a, **kw: pending.clear()
+
+from functions import TriggerLog, wait_for_trigger, wait_until             # noqa: E402
+
+now = 0.0
+clock = Clock()
+
+# A press from before the operator was ready must not be taken as the first trigger:
+# wait_for_trigger has to discard what is already waiting and take the next pulse.
+polls = [0]
+
+
+def arm(keyList=None, timeStamped=None, **kw):
+    polls[0] += 1
+    if polls[0] == 2:                        # a real pulse arrives while we wait
+        pending.append(("5", 4.0))
+    out = [(k, t) for k, t in pending if keyList is None or k in keyList]
+    pending.clear()
+    return out
+
+
+psychopy.event.getKeys = arm
+pending.append(("5", 0.0))                   # the stale one
+triggers = TriggerLog(clock, "key", "5")
+wait_for_trigger(triggers)
+assert triggers.times == [4.0], f"started on a stale trigger: {triggers.times}"
+
+psychopy.event.getKeys = lambda keyList=None, timeStamped=None, **kw: [
+    (k, t) for k, t in [pending.pop(0) for _ in range(len(pending))]
+    if keyList is None or k in keyList
+]
+triggers.times.clear()
+
+# Pulses at every TR through a run of epochs, each polled inside the wait.
+expected = [i * TR for i in range(1, 13)]
+queue = list(expected)
+for step in range(1, 7):                      # six 3 s epochs, 18 s in total
+    target = step * 3.0
+    while queue and queue[0] <= target:       # the scanner pulses during the wait
+        pending.append(("5", queue.pop(0)))
+    wait_until(target, clock, triggers)
+assert triggers.times == expected, f"recorded {triggers.times}, expected {expected}"
+
+# Being late must not stop the recording: the target is already past here.
+pending.append(("5", now))
+wait_until(now - 5.0, clock, triggers)
+assert len(triggers.times) == len(expected) + 1, "a late epoch skipped its poll"
+
 print(f"OK: {BLOCKS} blocks, {len(schedule)} epochs, {measurements(schedule)} measurements planned")
 print(f"  scheduled targets: ends {end - planned:+.3f} s off {planned:.1f} s, "
       f"worst onset {worst:.3f} s off")
 print(f"  fixed wait:        ends {drift_end - planned:+.3f} s off, worst onset {drift_worst:.3f} s off, "
       f"{round(drift_end / TR) - round(planned / TR):+d} measurements")
+print(f"  triggers:          {len(triggers.times)} recorded, stale ones flushed, none missed when late")

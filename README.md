@@ -74,7 +74,21 @@ The OpenRecon container must be given the rebuilt `src/run_orders.py`, and the r
 
 ## Output
 
-Data is saved to `data/sub-{N}_{initials}/`. See `data/README.md` for file format details.
+Data is saved to `data/sub-{N}_{initials}/`, with every file named
+`sub-{N}_run-{M}_order-{K}_{datetag}`:
+
+| File | Contents |
+|---|---|
+| `..._trial_schedule_*.csv` | The schedule as planned: block, trial, condition, onset, duration, run order |
+| `BodyLoc_sub-..._*.csv` | The run as it happened: measured onset and duration of every epoch |
+| `..._{CONDITION}_*.1D` | Onsets per condition in seconds, for AFNI |
+| `..._triggers_*.csv` | Every scanner trigger: volume, time from the first one, interval, and drift from the ideal TR grid |
+| `..._presentation_order_*.txt` | The run in readable form, headed with the screen's refresh rate |
+| `parameters_order-*.py` | A copy of `src/parameters.py` as it was for that run |
+
+The trigger file is the check on the scanner rather than on the task: `interval` should sit
+at `TR`, and `drift` shows how far the volume count has slipped. The task also logs the
+number of triggers against the measurements it expected, and warns if they disagree.
 
 ## Building a standalone executable
 

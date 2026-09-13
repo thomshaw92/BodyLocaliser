@@ -223,6 +223,20 @@ class TriggerLog:
                 self.times.append(self.clock.getTime())
             self._was_high = is_high
 
+    def flush(self):
+        """Discard anything that arrived before we started waiting.
+
+        Without this a pulse from before the operator was ready, or a stray keypress,
+        would be taken as the first trigger and the run would start against it.
+        """
+        if self.method == "key":
+            event.clearEvents()
+        elif self.method == "serial":
+            self._port.reset_input_buffer()
+        else:
+            self._was_high = bool(self._port.readPin(10))
+        self.times.clear()
+
     def close(self):
         if self._port is not None and hasattr(self._port, "close"):
             self._port.close()
@@ -239,9 +253,10 @@ def wait_until(target: float, clock: core.Clock, triggers: "TriggerLog" = None) 
         if remaining > 0:
             core.wait(remaining)
         return
+    triggers.poll()                      # at least once, even if we are already late
     while clock.getTime() < target:
-        triggers.poll()
         core.wait(0.0005)
+        triggers.poll()
 
 def wait_for_trigger(triggers: TriggerLog) -> None:
     """Block until the first scanner trigger arrives, recording it like the rest.
@@ -249,6 +264,7 @@ def wait_for_trigger(triggers: TriggerLog) -> None:
     *triggers* already knows the input method: a keyboard press for bench testing,
     pin 10 of a parallel port, or bytes from a serial port at 9600 baud.
     """
+    triggers.flush()
     logger.info("Waiting for the scanner trigger (%s) ...", triggers.method)
     while not triggers.times:
         triggers.poll()
