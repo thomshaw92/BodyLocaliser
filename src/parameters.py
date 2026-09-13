@@ -20,7 +20,9 @@ TRs_instruction = 2     # TRs for initial instruction screen
 # ---------------------------------------------------------------------------
 # Each condition is presented once per block, in the run order chosen at the
 # start: a preset OpenRecon order from src/run_orders.py, or a balanced random
-# order. The names must match those in src/run_orders.py.
+# order. The names must match those in src/run_orders.py: to use different body
+# regions, edit this list, rerun python3 tools/make_run_orders.py, and give the
+# OpenRecon container the rebuilt file. See "Different body regions" in README.md.
 COND_NAMES = [
     "LEFT ELBOW", "RIGHT ELBOW",
     "LEFT HAND",  "RIGHT HAND",
@@ -37,9 +39,10 @@ MID_BLOCK_REST_AFTER = 4    # a TRs_rest rest follows this trial in every block
 # ---------------------------------------------------------------------------
 # Countdown images
 # ---------------------------------------------------------------------------
-# The images/ folder must contain files named 1.png .. N.png.
-# If you change the number of images, update this constant and add/remove
-# the corresponding files.
+# The assets/images/ folder must contain files named 1.png .. N.png.
+# This also sets the movement pace: one image per movement, so 12 images in a
+# 9 s trial asks for a movement every 0.75 s. Changing it changes that pace.
+# If you change the number, add or remove the matching files.
 NUM_COUNTDOWN_IMAGES = 12
 
 # ---------------------------------------------------------------------------

@@ -4,21 +4,28 @@ Run from the project root:  python3 tools/make_run_orders.py
 Needs numpy and scipy, which the PsychoPy .venv already has. Takes a few minutes.
 Output is deterministic: the same movements and timings give the same file.
 
-RUN_ORDERS[blocks][k] is preset run order k (1 to 7) for that many blocks; each block shows
+To change the movements, edit COND_NAMES in src/parameters.py and rerun this, then run
+python3 src/test_schedule.py and give the OpenRecon container the new src/run_orders.py.
+N movements give N run orders, and the run order dialog offers one for each.
+
+RUN_ORDERS[blocks][k] is preset run order k (1 to N) for that many blocks; each block shows
 every movement in src/parameters.py once. Run order k is one base run with every movement
-index shifted by k - 1, mod 7, so across the 7 orders each movement fills each place of each
+index shifted by k - 1, mod N, so across the N orders each movement fills each place of each
 block exactly once and each opens exactly one run order.
 
 Rules inside a run:
   - a block never starts with the movement that ended the previous block
   - no ordered pair of consecutive movements occurs twice; with every step (the gap between
-    two movements in the list, mod 7) used exactly `blocks` times, which also gives each
-    ordered pair exactly `blocks` occurrences across the 7 orders
-  - each movement is in the first three places of one block and the last three of another
-Three block counts cannot meet all of them; the exceptions are noted in the file written:
-  - 1 block: no ordering of 7 movements uses all 6 steps, so pairs cannot be balanced
+    two movements in the list, mod N) used exactly `blocks` times, which also gives each
+    ordered pair exactly `blocks` occurrences across the N orders
+  - each movement is in the early places of one block and the late places of another
+Not every block count can meet all of them. A run spreads blocks * (N - 1) transitions over
+N * (N - 1) ordered pairs, so a pair must repeat once blocks > N; where the pair rule cannot
+be met the limit is relaxed one step at a time, and where no run exists at all that block
+count is left out of the file. Whatever was relaxed is written into it. At 7 movements:
+  - 1 block: the steps are not balanced, so pairs are not balanced either
   - 2 blocks: the movement in the middle place of a block cannot be both early and late, so
-    the rule becomes "not in the same third of the block twice"
+    the rule becomes "not in the same one of early / middle / late twice"
   - 8 blocks: 48 transitions exceed the 42 ordered pairs, so a pair may occur twice
 Of the bases found, the one whose worst movement-vs-mean-of-the-other-six contrast (the
 analysis contrast) has the lowest AFNI normalised SD is kept, as 3dDeconvolve -nodata reports
@@ -59,19 +66,25 @@ def rules_ok(run):
     places = [[block.index(c) for block in run] for c in range(N)]
     if len(run) >= 3:
         return all(min(p) < EARLY and max(p) > EARLY for p in places)
-    if len(run) == 2:          # not in the same third of the block twice
+    if len(run) == 2:          # not in the same one of early / middle / late twice
         return all((p[0] < EARLY, p[0] > EARLY) != (p[1] < EARLY, p[1] > EARLY) for p in places)
     return True
 
 
 def search_bases(blocks, rng):
     """Bases found by depth-first search with random restarts, in a fixed node budget, so
-    the result depends on the seed and not on how fast this machine is."""
-    if blocks == 1:                        # pairs cannot be balanced: any ordering will do
-        return [[list((0,) + p)] for p in itertools.permutations(range(1, N))]
+    the result depends on the seed and not on how fast this machine is.
 
-    limit = 1 if 6 * blocks <= N * (N - 1) else 2
-    bases, used, try_start = [], 0, 0
+    Returns (bases, limit). *limit* is how often an ordered pair of consecutive movements
+    is allowed to repeat within one run. A run has blocks * (N - 1) transitions to spread
+    over the N * (N - 1) ordered pairs, so ceil(blocks / N) is the arithmetic floor; the
+    floor is not always reachable once the step, boundary and place rules are added, so the
+    limit is relaxed one step at a time until a base exists. Returns ([], 0) if none does.
+    """
+    if blocks == 1:                        # pairs cannot repeat: each movement appears once
+        return [[list((0,) + p)] for p in itertools.permutations(range(1, N))], 1
+
+    bases, used, try_start, limit = [], 0, 0, 0
 
     def grow(run, block, pairs, steps):
         nonlocal used
@@ -102,12 +115,16 @@ def search_bases(blocks, rng):
             pairs[(u, v)] -= 1
         return None
 
-    while len(bases) < WANT and used < NODES_PER_COUNT:
-        try_start = used
-        base = grow([], [0], Counter(), [blocks] * N)
-        if base:
-            bases.append(base)
-    return bases
+    for limit in range(-(-blocks // N), blocks + 1):
+        bases, used = [], 0
+        while len(bases) < WANT and used < NODES_PER_COUNT:
+            try_start = used
+            base = grow([], [0], Counter(), [blocks] * N)
+            if base:
+                bases.append(base)
+        if bases:
+            return bases, limit
+    return [], 0
 
 
 def onsets(run):
@@ -130,7 +147,7 @@ def block_hrf(t):
 
 PEAK = block_hrf(np.arange(0, 40, 0.0005)).max()
 EYE = np.eye(N)
-CONTRASTS = np.vstack([EYE, EYE - (1 - EYE) / (N - 1)])   # 7 vs rest, then 7 vs the other six
+CONTRASTS = np.vstack([EYE, EYE - (1 - EYE) / (N - 1)])   # each vs rest, then vs the other N-1
 OTHERS = slice(N, 2 * N)
 PAIRWISE = np.array([EYE[i] - EYE[j] for i, j in itertools.combinations(range(N), 2)])
 MODELS = {}
@@ -156,9 +173,8 @@ def nsd(run, contrasts=CONTRASTS):
     return np.sqrt(np.einsum("ij,jk,ik->i", contrasts, V, contrasts))
 
 
-def check_set(orders):
+def check_set(orders, limit):
     blocks = len(orders[0])
-    limit = 1 if 6 * blocks <= N * (N - 1) else 2
     assert all(rules_ok(r) for r in orders), "a run order breaks a within-run rule"
     assert all(max(Counter(transitions(r)).values(), default=0) <= limit
                for r in orders), "an ordered pair repeats within a run"
@@ -170,30 +186,63 @@ def check_set(orders):
         assert len(pairs) == N * (N - 1) and set(pairs.values()) == {blocks}, "pairs unbalanced"
 
 
+def exceptions(out, limits):
+    """The rules each block count could not meet, in the words the written file uses."""
+    lines = []
+    for blocks in sorted(out):
+        if blocks == 1:
+            seen = Counter(t for r in out[1].values() for t in transitions(r))
+            lines.append(f"  - 1 block: the steps between consecutive movements are not balanced, so\n"
+                         f"    across the {N} orders an ordered pair occurs up to {max(seen.values())} "
+                         f"times and {N * (N - 1) - len(seen)} never occur")
+        if blocks == 2:
+            lines.append("  - 2 blocks: each movement is in a different one of early, middle and late\n"
+                         "    in the two blocks, rather than early in one block and late in another")
+        if limits[blocks] > 1:
+            often = "twice" if limits[blocks] == 2 else f"{limits[blocks]} times"
+            lines.append(f"  - {blocks} blocks: an ordered pair may occur {often} within a run, because "
+                         f"its\n    {blocks * (N - 1)} transitions outnumber the {N * (N - 1)} "
+                         f"ordered pairs")
+    for blocks in sorted(set(BLOCK_COUNTS) - set(out)):
+        lines.append(f"  - {blocks} blocks: no run order can meet the rules with {N} movements, so\n"
+                     f"    this block count is absent")
+    return lines
+
+
 def main():
-    out = {}
+    out, limits = {}, {}
     print(f"{len(COND_NAMES)} movements, {EPOCH:.0f} s each; rest {REST:.0f} s after movement "
           f"{MID_BLOCK_REST_AFTER} and after each block; final rest {FINAL_REST:.0f} s\n")
     for blocks in BLOCK_COUNTS:
         started = time.time()
-        bases = search_bases(blocks, random.Random(SEED + blocks))
+        bases, limit = search_bases(blocks, random.Random(SEED + blocks))
         if not bases:
-            raise SystemExit(f"No valid base run found for {blocks} blocks.")
+            print(f"{blocks} block{'s' if blocks > 1 else ' '}: no run order meets the rules with "
+                  f"{N} movements; left out of run_orders.py ({time.time() - started:.1f} s)")
+            continue
         base = min(bases, key=lambda r: nsd(r)[OTHERS].max())
         orders = [[[(c + k) % N for c in block] for block in base] for k in range(N)]
-        check_set(orders)
-        out[blocks] = {k: [[COND_NAMES[c] for c in block] for block in r]
-                       for k, r in enumerate(orders, 1)}
+        check_set(orders, limit)
+        out[blocks], limits[blocks] = {k: [[COND_NAMES[c] for c in block] for block in r]
+                                       for k, r in enumerate(orders, 1)}, limit
 
         E = np.array([nsd(r) for r in orders])
         worst_pair = max(nsd(r, PAIRWISE).max() for r in orders)
         total = model(blocks)[2]
         print(f"{blocks} block{'s' if blocks > 1 else ' '}: {total:4.0f} s, "
               f"{round(total / TR):3d} measurements, {len(bases):3d} bases in {time.time() - started:5.1f} s;"
+              f"  pair limit {limit}"
               f"  vs rest {E[:, :N].min():.4f}-{E[:, :N].max():.4f}"
-              f"  vs other six {E[:, OTHERS].min():.4f}-{E[:, OTHERS].max():.4f}"
+              f"  vs other {N - 1} {E[:, OTHERS].min():.4f}-{E[:, OTHERS].max():.4f}"
               f"  worst pairwise {worst_pair:.4f}")
 
+    if not out:
+        raise SystemExit(f"No block count works with {N} movements; nothing written.")
+
+    if BLOCKS not in out:
+        print(f"\nparameters.py asks for {BLOCKS} blocks, which is not one of the block counts "
+              f"written; set BLOCKS to one of {', '.join(str(b) for b in sorted(out))}.")
+        return
     print(f"\nrun orders for the {BLOCKS} blocks set in parameters.py:")
     for k, order in out[BLOCKS].items():
         print(f"{k:>9}  " + " | ".join(" ".join(SHORT[COND_NAMES.index(c)] for c in block)
@@ -201,16 +250,12 @@ def main():
 
     (ROOT / "src" / "run_orders.py").write_text(
         '"""BodyLocaliser run orders, written by tools/make_run_orders.py. Do not edit by hand.\n\n'
-        "RUN_ORDERS[blocks][k] is preset run order k (1 to 7) for that many blocks: a list of\n"
-        "blocks, each listing the movements in the order they are shown. Across the 7 orders each\n"
+        f"RUN_ORDERS[blocks][k] is preset run order k (1 to {N}) for that many blocks: a list of\n"
+        f"blocks, each listing the movements in the order they are shown. Across the {N} orders each\n"
         "movement fills each place of each block exactly once, each opens exactly one run order,\n"
         "and each ordered pair of consecutive movements occurs exactly `blocks` times. Exceptions:\n"
-        "  - 1 block: pairs cannot be balanced, because no ordering of the 7 movements uses all\n"
-        "    6 steps; some pairs occur twice across the 7 orders and some never\n"
-        "  - 2 blocks: each movement is in a different third of the block in the two blocks,\n"
-        "    rather than early in one block and late in another\n"
-        "  - 8 blocks: an ordered pair may occur twice within a run, because its 48 transitions\n"
-        '    outnumber the 42 ordered pairs\n"""\n\nRUN_ORDERS = '
+        + "\n".join(exceptions(out, limits))
+        + '\n"""\n\nRUN_ORDERS = '
         + pprint.pformat(out, width=110) + "\n")
 
 

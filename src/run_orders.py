@@ -4,12 +4,12 @@ RUN_ORDERS[blocks][k] is preset run order k (1 to 7) for that many blocks: a lis
 blocks, each listing the movements in the order they are shown. Across the 7 orders each
 movement fills each place of each block exactly once, each opens exactly one run order,
 and each ordered pair of consecutive movements occurs exactly `blocks` times. Exceptions:
-  - 1 block: pairs cannot be balanced, because no ordering of the 7 movements uses all
-    6 steps; some pairs occur twice across the 7 orders and some never
-  - 2 blocks: each movement is in a different third of the block in the two blocks,
-    rather than early in one block and late in another
-  - 8 blocks: an ordered pair may occur twice within a run, because its 48 transitions
-    outnumber the 42 ordered pairs
+  - 1 block: the steps between consecutive movements are not balanced, so
+    across the 7 orders an ordered pair occurs up to 4 times and 21 never occur
+  - 2 blocks: each movement is in a different one of early, middle and late
+    in the two blocks, rather than early in one block and late in another
+  - 8 blocks: an ordered pair may occur twice within a run, because its
+    48 transitions outnumber the 42 ordered pairs
 """
 
 RUN_ORDERS = {1: {1: [['LEFT ELBOW', 'RIGHT ELBOW', 'LEFT HAND', 'RIGHT HAND', 'LEFT FOOT', 'TONGUE', 'RIGHT FOOT']],

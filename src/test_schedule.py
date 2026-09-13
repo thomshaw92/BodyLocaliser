@@ -15,15 +15,15 @@ from parameters import (
     TRs_rest,
 )
 from run_orders import RUN_ORDERS
-from schedule import generate_trial_schedule, measurements, run_order_blocks
+from schedule import check_parameters, generate_trial_schedule, measurements, run_order_blocks
 
 N = len(COND_NAMES)
 TRIAL, REST, FINAL = TR * TRs_per_trial, TR * TRs_rest, TR * TRs_final_rest
 MID_AFTER = min(MID_BLOCK_REST_AFTER, N)          # trials before the rest inside a block
-HAS_MID = MID_AFTER < N
+HAS_MID = 0 < MID_AFTER < N
 BLOCK_LAYOUT = "M" * MID_AFTER + "R" * HAS_MID + "M" * (N - MID_AFTER) + "R"
 
-assert BLOCKS in RUN_ORDERS, f"BLOCKS = {BLOCKS} is not a block count in run_orders.py"
+check_parameters()
 
 for blocks, orders in RUN_ORDERS.items():
     # The 7 preset orders: every movement fills every place of every block exactly once.

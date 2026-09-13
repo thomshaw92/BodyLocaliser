@@ -20,7 +20,7 @@ from parameters import (
     TRs_rest,
 )
 from run_orders import RUN_ORDERS
-from schedule import generate_trial_schedule, measurements, run_order_blocks
+from schedule import check_parameters, generate_trial_schedule, measurements, run_order_blocks
 
 
 def show(run_order, subnum):
@@ -38,6 +38,7 @@ def show(run_order, subnum):
 
 
 def main(argv):
+    check_parameters()
     run_order = argv[1] if len(argv) > 1 else None
     if run_order not in (None, "random"):
         run_order = int(run_order)
