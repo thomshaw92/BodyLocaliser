@@ -2,7 +2,8 @@
 #
 # Install with:  pip install -r requirements.txt
 #
-# IMPORTANT: PsychoPy requires Python >=3.9, <3.12.
+# IMPORTANT: PsychoPy requires Python >=3.10, <3.13 (Requires-Python of the release
+# the launchers install). Check it if you pin a different PsychoPy version.
 # The launcher scripts handle this automatically.
 psychopy
 
