@@ -124,6 +124,16 @@ def check_parameters():
     if not isinstance(MID_BLOCK_REST_AFTER, int) or not 0 <= MID_BLOCK_REST_AFTER < n:
         problems.append(f"MID_BLOCK_REST_AFTER must be a whole number, 0 (no rest inside a block) "
                         f"to {n - 1}, not {MID_BLOCK_REST_AFTER!r}")
+    elif MID_BLOCK_REST_AFTER and not 2 <= MID_BLOCK_REST_AFTER <= n - 2:
+        # One movement between two rests is scanned in a different context from the rest of
+        # its block, and the position does not follow COND_NAMES when it changes.
+        if n >= 4:
+            problems.append(f"MID_BLOCK_REST_AFTER of {MID_BLOCK_REST_AFTER} leaves fewer than two "
+                            f"movements on one side of the rest; with {n} movements use 2 to "
+                            f"{n - 2}, about half being usual, or 0 for no rest inside a block")
+        else:
+            problems.append(f"{n} movements leave no room for a rest inside a block; set "
+                            f"MID_BLOCK_REST_AFTER to 0")
     if not isinstance(NUM_COUNTDOWN_IMAGES, int) or NUM_COUNTDOWN_IMAGES < 1:
         problems.append(f"NUM_COUNTDOWN_IMAGES must be a whole number, 1 or more, not "
                         f"{NUM_COUNTDOWN_IMAGES!r}")
