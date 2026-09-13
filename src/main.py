@@ -41,7 +41,7 @@ from functions import (
     wait_for_trigger,
     get_subject_info,
 )
-from schedule import generate_trial_schedule, measurements, run_order_blocks
+from schedule import check_parameters, generate_trial_schedule, measurements, run_order_blocks
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 logging.basicConfig(
@@ -83,9 +83,11 @@ def save_overall_log(log_entries, path):
         writer.writerows(log_entries)
 
 
-def save_presentation_order(schedule, path):
+def save_presentation_order(schedule, path, header=""):
     """Write a human-readable presentation order file."""
     with open(path, "w") as fh:
+        if header:
+            fh.write(header + "\n")
         for entry in schedule:
             fh.write(
                 f'Block: {entry["block"]}, '
@@ -101,12 +103,14 @@ def save_presentation_order(schedule, path):
 # ---------------------------------------------------------------------------
 
 def main():
+    check_parameters()
+
     # ---- Subject info & output directory ----
     subject_info = get_subject_info()
     initials = subject_info["initials"]
     subnum = subject_info["subject_number"]
     run_num = subject_info["run_number"]
-    run_order = subject_info["run_order"]  # 1-7, or "random"
+    run_order = subject_info["run_order"]  # a preset run order number, or "random"
 
     blocks = run_order_blocks(run_order, subnum)
 
@@ -143,6 +147,21 @@ def main():
     win = create_window()
     countdown_images = load_countdown_images(win)
 
+    # A screen too slow to reach the next image on time shortens epochs rather than
+    # adding volumes, which is silent, so report what this screen does.
+    refresh = win.getActualFrameRate()
+    frames_per_image = refresh * TR * TRs_per_trial / len(countdown_images) if refresh else None
+    if refresh:
+        detail += f"\n{refresh:.0f} Hz screen, {frames_per_image:.0f} frames per countdown image"
+        logger.info("Screen: %.1f Hz, %.1f frames per countdown image", refresh, frames_per_image)
+    else:
+        detail += "\nScreen refresh could not be measured"
+        logger.warning("Could not measure the screen refresh rate")
+    if frames_per_image is not None and frames_per_image < 2:
+        detail += "\nWARNING: too few frames per image, epochs will be shortened"
+        logger.warning("Only %.1f frames per countdown image; this screen cannot keep up",
+                       frames_per_image)
+
     try:
         # ---- Instructions & trigger ----
         show_instruction(win, TR, TRs_instruction)
@@ -163,24 +182,21 @@ def main():
         global_clock = core.Clock()
 
         # ---- Run rests and trials from schedule ----
+        # Every entry ends at its scheduled time on the global clock, so a flip that
+        # lands late costs that entry alone instead of delaying the whole run.
         for entry in schedule:
             check_quit_key()
 
+            end_time = entry["simulated_onset"] + entry["duration"]
             if entry["condition"] == "REST":
-                onset_time = global_clock.getTime()
-                show_rest_with_countdown(
-                    win, TR, int(entry["duration"] / TR), countdown_images
+                onset_time = show_rest_with_countdown(
+                    win, countdown_images, global_clock, end_time
                 )
-                duration = entry["duration"]
             else:
-                onset_time, duration = run_trial(
-                    win,
-                    entry["condition"],
-                    TR,
-                    TRs_per_trial,
-                    countdown_images,
-                    global_clock,
+                onset_time = run_trial(
+                    win, entry["condition"], countdown_images, global_clock, end_time
                 )
+            duration = global_clock.getTime() - onset_time
             onset_dict[entry["condition"]].append(onset_time)
             overall_log.append({
                 "block": entry["block"],
@@ -191,6 +207,10 @@ def main():
                 "cumulative_onset": onset_time + duration,
                 "run_order": run_order,
             })
+
+        planned = schedule[-1]["simulated_onset"] + schedule[-1]["duration"]
+        logger.info("Run ended %+.3f s from the scheduled %.1f s",
+                    global_clock.getTime() - planned, planned)
 
     finally:
         # ---- Always save data, even on early exit ----
@@ -205,6 +225,7 @@ def main():
         save_presentation_order(
             schedule,
             os.path.join(data_dir, f"{prefix}_presentation_order_{datetag}.txt"),
+            header=f"Screen: {refresh:.1f} Hz" if refresh else "Screen: refresh not measured",
         )
 
         win.close()
