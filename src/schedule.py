@@ -10,6 +10,7 @@ from parameters import (
     BLOCKS,
     COND_NAMES,
     MID_BLOCK_REST_AFTER,
+    NUM_COUNTDOWN_IMAGES,
     PORT_ADDRESS,
     SERIAL_PORT,
     TR,
@@ -120,9 +121,12 @@ def check_parameters():
                                ("TRs_instruction", TRs_instruction, 0)]:
         if not isinstance(value, int) or value < least:
             problems.append(f"{name} must be a whole number of TRs, {least} or more, not {value!r}")
-    if not 0 <= MID_BLOCK_REST_AFTER < n:
-        problems.append(f"MID_BLOCK_REST_AFTER must be 0 (no rest inside a block) to {n - 1}, "
-                        f"not {MID_BLOCK_REST_AFTER!r}")
+    if not isinstance(MID_BLOCK_REST_AFTER, int) or not 0 <= MID_BLOCK_REST_AFTER < n:
+        problems.append(f"MID_BLOCK_REST_AFTER must be a whole number, 0 (no rest inside a block) "
+                        f"to {n - 1}, not {MID_BLOCK_REST_AFTER!r}")
+    if not isinstance(NUM_COUNTDOWN_IMAGES, int) or NUM_COUNTDOWN_IMAGES < 1:
+        problems.append(f"NUM_COUNTDOWN_IMAGES must be a whole number, 1 or more, not "
+                        f"{NUM_COUNTDOWN_IMAGES!r}")
     if TRIGGER_INPUT_METHOD not in ("key", "parallel", "serial"):
         problems.append(f"TRIGGER_INPUT_METHOD must be key, parallel or serial, "
                         f"not {TRIGGER_INPUT_METHOD!r}")

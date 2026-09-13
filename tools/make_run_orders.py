@@ -239,14 +239,14 @@ def main():
     if not out:
         raise SystemExit(f"No block count works with {N} movements; nothing written.")
 
-    if BLOCKS not in out:
-        print(f"\nparameters.py asks for {BLOCKS} blocks, which is not one of the block counts "
-              f"written; set BLOCKS to one of {', '.join(str(b) for b in sorted(out))}.")
-        return
-    print(f"\nrun orders for the {BLOCKS} blocks set in parameters.py:")
-    for k, order in out[BLOCKS].items():
-        print(f"{k:>9}  " + " | ".join(" ".join(SHORT[COND_NAMES.index(c)] for c in block)
-                                       for block in order))
+    if BLOCKS in out:
+        print(f"\nrun orders for the {BLOCKS} blocks set in parameters.py:")
+        for k, order in out[BLOCKS].items():
+            print(f"{k:>9}  " + " | ".join(" ".join(SHORT[COND_NAMES.index(c)] for c in block)
+                                           for block in order))
+    else:
+        print(f"\nparameters.py asks for {BLOCKS} blocks, which could not be built; set BLOCKS "
+              f"to one of {', '.join(str(b) for b in sorted(out))}.")
 
     (ROOT / "src" / "run_orders.py").write_text(
         '"""BodyLocaliser run orders, written by tools/make_run_orders.py. Do not edit by hand.\n\n'
