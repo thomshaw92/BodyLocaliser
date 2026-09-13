@@ -287,7 +287,8 @@ fi
 # ---------------------------------------------------------------------------
 # Step 5: Install dependencies
 # ---------------------------------------------------------------------------
-if [ ! -f "$VENV_DIR/.installed" ]; then
+# .installed holds the requirements.txt that was installed, so a changed one reinstalls.
+if ! cmp -s requirements.txt "$VENV_DIR/.installed"; then
     echo ""
     echo "Installing PsychoPy and dependencies (this may take a few minutes)..."
     echo ""
@@ -313,7 +314,7 @@ if [ ! -f "$VENV_DIR/.installed" ]; then
             exit 1
         fi
     fi
-    touch "$VENV_DIR/.installed"
+    cp requirements.txt "$VENV_DIR/.installed"
     echo ""
     echo "Dependencies installed successfully."
 fi

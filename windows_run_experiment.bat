@@ -252,7 +252,9 @@ REM -------------------------------------------------------------------
 :check_installed
 call %VENV_DIR%\Scripts\activate.bat
 
-if not exist "%VENV_DIR%\.installed" (
+REM .installed holds the requirements.txt that was installed, so a changed one reinstalls.
+fc /b requirements.txt "%VENV_DIR%\.installed" >nul 2>&1
+if errorlevel 1 (
     echo.
     echo Installing PsychoPy and dependencies (this may take a few minutes^)...
     echo.
@@ -277,7 +279,7 @@ if not exist "%VENV_DIR%\.installed" (
             exit /b 1
         )
     )
-    echo. > %VENV_DIR%\.installed
+    copy /y requirements.txt "%VENV_DIR%\.installed" >nul
     echo.
     echo Dependencies installed successfully.
 )
