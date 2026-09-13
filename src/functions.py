@@ -24,6 +24,7 @@ from parameters import (
     TRIAL_TEXT_SIZE,
 )
 from run_orders import RUN_ORDERS
+from schedule import file_safe
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +120,9 @@ def get_subject_info() -> dict:
 
         if not initials:
             error = "Participant initials cannot be empty."
+        elif not file_safe(initials):
+            error = (f"Participant initials '{initials}' go into the output folder name, "
+                     f"so use only letters, digits, spaces, - and _.")
         elif not raw_sub.isdecimal():
             error = f"Subject number '{raw_sub}' must be a whole number."
         elif not raw_run.isdecimal():

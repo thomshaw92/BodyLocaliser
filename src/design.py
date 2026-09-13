@@ -12,6 +12,7 @@ import sys
 from parameters import (
     BLOCKS,
     COND_NAMES,
+    NUM_COUNTDOWN_IMAGES,
     TR,
     TRs_dummy_scans,
     TRs_final_rest,
@@ -50,10 +51,14 @@ def main(argv):
     scan = sum(e["duration"] for e in schedule)
     print("BodyLocaliser design, from src/parameters.py")
     print(f"  blocks             {BLOCKS}  (run_orders.py holds {min(RUN_ORDERS)} to {max(RUN_ORDERS)})")
-    print(f"  movements          {len(COND_NAMES)}, {TRs_per_trial} TRs each")
-    print(f"  rest               {TRs_rest} TRs, after trial {MID_REST} of each block "
+    trial = TR * TRs_per_trial
+    pace = trial / NUM_COUNTDOWN_IMAGES
+    print(f"  movements          {len(COND_NAMES)}, {TRs_per_trial} TRs each ({trial:.1f} s)")
+    print(f"  movement pace      {NUM_COUNTDOWN_IMAGES} images per trial, one every "
+          f"{pace:.2f} s ({1 / pace:.2f} Hz)")
+    print(f"  rest               {TRs_rest} TRs ({TR * TRs_rest:.1f} s), after trial {MID_REST} of each block "
           f"and after each block")
-    print(f"  final rest         {TRs_final_rest} TRs")
+    print(f"  final rest         {TRs_final_rest} TRs ({TR * TRs_final_rest:.1f} s)")
     print(f"  dummy scans        {TRs_dummy_scans} TRs")
     print(f"  TR                 {TR} s")
     print(f"  scan               {scan:.0f} s, {measurements(schedule)} measurements")

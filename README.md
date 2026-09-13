@@ -65,7 +65,7 @@ All tuneable settings live in `src/parameters.py`:
 
 The OpenRecon container must be given the rebuilt `src/run_orders.py`, and the run order numbers on the protocol card change with it.
 
-**Print the design.** `python3 src/design.py` prints the settings, the scan length, the number of measurements and every movement onset, for each preset run order. Add a run order (`python3 src/design.py 3`) to print just that one. This is the spec sheet for the scanner and for the OpenRecon container, which has to match the timings printed at the top.
+**Print the design.** `python3 src/design.py` prints the settings, the movement pace, the scan length, the number of measurements and every movement onset, for each preset run order. Read the pace off it rather than assuming: it is the trial length divided by `NUM_COUNTDOWN_IMAGES`, so `TR` and `TRs_per_trial` move it too. Add a run order (`python3 src/design.py 3`) to print just that one. This is the spec sheet for the scanner and for the OpenRecon container, which has to match the timings printed at the top.
 
 **Rebuild the run orders.** Only needed if the movements or the rules change: `python3 tools/make_run_orders.py` rewrites `src/run_orders.py`. It needs numpy and scipy, which the PsychoPy `.venv` already has, and takes a few minutes. Its output is deterministic, and the OpenRecon container must be given the same file.
 

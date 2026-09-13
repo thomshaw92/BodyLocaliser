@@ -43,9 +43,10 @@ MID_BLOCK_REST_AFTER = None
 # Countdown images
 # ---------------------------------------------------------------------------
 # The assets/images/ folder must contain files named 1.png .. N.png.
-# This also sets the movement pace: one image per movement, so 12 images in a
-# 9 s trial asks for a movement every 0.75 s. Changing it changes that pace.
-# If you change the number, add or remove the matching files.
+# This also sets the movement pace: one image per movement, so the trial length
+# divided by this number is the interval asked for between movements. TR and
+# TRs_per_trial change it too, so read the pace off python3 src/design.py rather
+# than assuming it. If you change the number, add or remove the matching files.
 NUM_COUNTDOWN_IMAGES = 12
 
 # ---------------------------------------------------------------------------

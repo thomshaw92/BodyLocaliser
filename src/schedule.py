@@ -24,6 +24,11 @@ from parameters import (
 from run_orders import RUN_ORDERS
 
 
+def file_safe(text):
+    """True if *text* can go into an output file or directory name unchanged."""
+    return bool(re.fullmatch(r"[A-Za-z0-9 _-]+", str(text)))
+
+
 def centred_rest(n):
     """Where the rest inside a block falls when MID_BLOCK_REST_AFTER is None.
 
@@ -109,7 +114,7 @@ def check_parameters():
 
     if len(set(COND_NAMES)) != n or "REST" in COND_NAMES:
         problems.append("COND_NAMES must be unique and must not contain REST")
-    unsafe = [c for c in COND_NAMES if not re.fullmatch(r"[A-Za-z0-9 _-]+", str(c))]
+    unsafe = [c for c in COND_NAMES if not file_safe(c)]
     if unsafe:
         problems.append(f"COND_NAMES goes into the output file names, so use only letters, "
                         f"digits, spaces, - and _: {', '.join(map(repr, unsafe))}")
