@@ -209,7 +209,7 @@ def main():
         # Every entry ends at its scheduled time on the global clock, so a flip that
         # lands late costs that entry alone instead of delaying the whole run.
         for entry in schedule:
-            check_quit_key()
+            check_quit_key(triggers)
 
             end_time = entry["simulated_onset"] + entry["duration"]
             if entry["condition"] == "REST":

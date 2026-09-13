@@ -184,6 +184,7 @@ class TriggerLog:
         self.method = input_method
         self.value = trigger_value
         self.times = []
+        self.quit_pressed = False
         self._port = None
         self._was_high = False
 
@@ -211,8 +212,11 @@ class TriggerLog:
     def poll(self):
         """Collect any triggers that have arrived. Cheap; call it as often as you like."""
         if self.method == "key":
-            self.times.extend(t for _, t in event.getKeys(keyList=[self.value],
-                                                          timeStamped=self.clock))
+            for key, when in event.getKeys(timeStamped=self.clock):
+                if key == self.value:
+                    self.times.append(when)
+                elif key == "escape":
+                    self.quit_pressed = True
         elif self.method == "serial":
             while self._port.in_waiting:
                 if self._port.read() == self._want:
@@ -279,9 +283,13 @@ def wait_for_trigger(triggers: TriggerLog) -> None:
 # Quit handler
 # ---------------------------------------------------------------------------
 
-def check_quit_key() -> None:
-    """Check whether Escape has been pressed and exit gracefully if so."""
-    if event.getKeys(keyList=["escape"]):
+def check_quit_key(triggers=None) -> None:
+    """Check whether Escape has been pressed and exit gracefully if so.
+
+    A key trigger log drains the whole key buffer as it polls, so it is the one
+    that sees Escape; ask it as well as the buffer.
+    """
+    if (triggers is not None and triggers.quit_pressed) or event.getKeys(keyList=["escape"]):
         logger.info("Experiment terminated by user (Escape).")
         core.quit()
 
@@ -361,7 +369,7 @@ def _display_countdown(
     """
     step = (end - start) / len(images)
     for i, img in enumerate(images, start=1):
-        check_quit_key()        # so Escape acts within one image, not one epoch
+        check_quit_key(triggers)   # so Escape acts within one image, not one epoch
         img.draw()
         overlay_text.draw()
         win.flip()

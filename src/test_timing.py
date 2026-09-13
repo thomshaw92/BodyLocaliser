@@ -166,6 +166,21 @@ pending.append(("5", now))
 wait_until(now - 5.0, clock, triggers)
 assert len(triggers.times) == len(expected) + 1, "a late epoch skipped its poll"
 
+recorded = len(triggers.times)          # for the summary, before the checks below reset it
+
+# Polling must drain the whole key buffer, not just the trigger key: getKeys walks the
+# buffer on every one of about 1900 polls a second, so anything left there makes each poll
+# dearer for the rest of the run.
+triggers.times.clear()
+triggers.quit_pressed = False
+pending.extend([("q", 0.0)] * 50 + [("5", 1.0), ("escape", 1.1)])
+triggers.poll()
+assert not pending, f"{len(pending)} keys left in the buffer after a poll"
+assert triggers.times == [1.0], f"trigger lost among the stray keys: {triggers.times}"
+assert triggers.quit_pressed, "escape was swallowed with the stray keys"
+triggers.times.clear()
+triggers.quit_pressed = False
+
 # ---------------------------------------------------------------------------
 # The parallel trigger, which no hardware here can exercise
 # ---------------------------------------------------------------------------
@@ -211,5 +226,5 @@ print(f"  scheduled targets: ends {end - planned:+.3f} s off {planned:.1f} s, "
       f"worst onset {worst:.3f} s off")
 print(f"  fixed wait:        ends {drift_end - planned:+.3f} s off, worst onset {drift_worst:.3f} s off, "
       f"{round(drift_end / TR) - round(planned / TR):+d} measurements")
-print(f"  triggers:          {len(triggers.times)} recorded, stale ones flushed, none missed when late")
+print(f"  triggers:          {recorded} recorded, stale ones flushed, none missed when late")
 print("  parallel port:     rising edge only, no false start on a line already high")
