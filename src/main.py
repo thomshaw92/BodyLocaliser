@@ -29,6 +29,7 @@ from parameters import (
     TRs_per_trial,
 )
 from functions import (
+    TriggerLog,
     check_quit_key,
     create_window,
     handle_dummy_scans,
@@ -81,6 +82,23 @@ def save_overall_log(log_entries, path):
         writer = csv.DictWriter(fh, fieldnames=fields)
         writer.writeheader()
         writer.writerows(log_entries)
+
+
+def save_trigger_csv(times, path, TR):
+    """Write when every scanner trigger arrived, timed from the first one.
+
+    The scanner pulses at the start of each TR, so `interval` should sit at TR and
+    `drift` shows how far the volume count has slipped from the ideal grid.
+    """
+    first = times[0] if times else 0.0
+    with open(path, "w", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["volume", "time", "interval", "drift"])
+        for i, t in enumerate(times):
+            since = t - first
+            writer.writerow([i, f"{since:.4f}",
+                             "" if i == 0 else f"{t - times[i - 1]:.4f}",
+                             f"{since - i * TR:+.4f}"])
 
 
 def save_presentation_order(schedule, path, header=""):
@@ -162,20 +180,21 @@ def main():
         logger.warning("Only %.1f frames per countdown image; this screen cannot keep up",
                        frames_per_image)
 
+    triggers = None
     try:
         # ---- Instructions & trigger ----
         show_instruction(win, TR, TRs_instruction)
         show_waiting_for_scanner(win, detail)
-        wait_for_trigger(
-            input_method=TRIGGER_INPUT_METHOD,
-            trigger_value=TRIGGER_VALUE,
-            port_address=PORT_ADDRESS,
-            serial_port=SERIAL_PORT,
-        )
+
+        # Every trigger is recorded, not just the first: the scanner pulses at the start
+        # of each TR, so the times are a check on its timing against the schedule.
+        triggers = TriggerLog(core.Clock(), TRIGGER_INPUT_METHOD, TRIGGER_VALUE,
+                              PORT_ADDRESS, SERIAL_PORT)
+        wait_for_trigger(triggers)
         check_quit_key()
 
         # ---- Dummy scans ----
-        handle_dummy_scans(win, TR, TRs_dummy_scans)
+        handle_dummy_scans(win, TR, TRs_dummy_scans, triggers)
         check_quit_key()
 
         # ---- Global clock starts now ----
@@ -190,11 +209,12 @@ def main():
             end_time = entry["simulated_onset"] + entry["duration"]
             if entry["condition"] == "REST":
                 onset_time = show_rest_with_countdown(
-                    win, countdown_images, global_clock, end_time
+                    win, countdown_images, global_clock, end_time, triggers
                 )
             else:
                 onset_time = run_trial(
-                    win, entry["condition"], countdown_images, global_clock, end_time
+                    win, entry["condition"], countdown_images, global_clock, end_time,
+                    triggers
                 )
             duration = global_clock.getTime() - onset_time
             onset_dict[entry["condition"]].append(onset_time)
@@ -211,6 +231,10 @@ def main():
         planned = schedule[-1]["simulated_onset"] + schedule[-1]["duration"]
         logger.info("Run ended %+.3f s from the scheduled %.1f s",
                     global_clock.getTime() - planned, planned)
+        logger.info("Scanner triggers recorded: %d, expected %d", len(triggers.times), volumes)
+        if len(triggers.times) != volumes:
+            logger.warning("Trigger count does not match the %d measurements expected",
+                           volumes)
 
     finally:
         # ---- Always save data, even on early exit ----
@@ -227,6 +251,14 @@ def main():
             os.path.join(data_dir, f"{prefix}_presentation_order_{datetag}.txt"),
             header=f"Screen: {refresh:.1f} Hz" if refresh else "Screen: refresh not measured",
         )
+
+        if triggers is not None:
+            save_trigger_csv(
+                triggers.times,
+                os.path.join(data_dir, f"{prefix}_triggers_{datetag}.csv"),
+                TR,
+            )
+            triggers.close()
 
         win.close()
         logger.info("Output files saved to %s", data_dir)

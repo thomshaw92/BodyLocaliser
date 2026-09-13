@@ -49,7 +49,7 @@ visual.TextStim = visual.ImageStim = type("Stim", (), {"draw": lambda self: None
 psychopy = types.ModuleType("psychopy")
 psychopy.core, psychopy.visual = core, visual
 psychopy.event = types.ModuleType("psychopy.event")
-psychopy.event.getKeys = lambda: []          # nobody presses Escape in here
+psychopy.event.getKeys = lambda **kw: []     # nobody presses Escape, and no scanner here
 psychopy.gui = types.ModuleType("psychopy.gui")
 for name, mod in [("psychopy", psychopy), ("psychopy.core", core), ("psychopy.visual", visual),
                   ("psychopy.event", psychopy.event), ("psychopy.gui", psychopy.gui)]:
