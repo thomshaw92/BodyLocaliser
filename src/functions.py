@@ -13,14 +13,19 @@ from psychopy import visual, core, event, gui
 
 from parameters import (
     BACKGROUND_COLOR,
+    BLOCKS,
     COUNTDOWN_IMAGE_POSITION,
     COUNTDOWN_IMAGE_SIZE,
     FIXATION_TEXT_SIZE,
     FULL_SCREEN,
     INSTRUCTION_TEXT_SIZE,
     NUM_COUNTDOWN_IMAGES,
+    SCREEN,
     TEXT_COLOR,
+    TRIAL_TEXT_SIZE,
 )
+from run_orders import RUN_ORDERS
+from schedule import file_safe, trigger_byte
 
 logger = logging.getLogger(__name__)
 
@@ -54,15 +59,20 @@ def resource_path(relative_path: str) -> str:
 # ---------------------------------------------------------------------------
 
 def create_window() -> visual.Window:
-    """Create and return the fullscreen PsychoPy window."""
-    return visual.Window(
+    """Create and return the PsychoPy window, with the mouse cursor hidden.
+
+    PsychoPy shows the cursor again when the window closes.
+    """
+    win = visual.Window(
         fullscr=FULL_SCREEN,
-        screen=0,
+        screen=SCREEN,
         color=BACKGROUND_COLOR,
         colorSpace="rgb",
         units="height",
         waitBlanking=True,
     )
+    win.mouseVisible = False
+    return win
 
 
 def load_countdown_images(win: visual.Window) -> list:
@@ -82,107 +92,204 @@ def load_countdown_images(win: visual.Window) -> list:
 # ---------------------------------------------------------------------------
 
 def get_subject_info() -> dict:
-    """Show a dialog to collect participant initials, subject number, and run number.
+    """Show a dialog to collect participant initials, subject number, and run number,
+    then ask for the run order (see ask_run_order).
 
-    Returns a dict with keys 'initials', 'subject_number', 'run_number'.
-    Calls core.quit() if the user cancels the dialog.
+    Anything invalid is reported in red at the top of the dialog, which reopens
+    with what was typed still in place. Returns a dict with keys 'initials',
+    'subject_number', 'run_number', 'run_order'. Calls core.quit() if the user
+    cancels either dialog.
     """
+    error, typed = "", ["", "", ""]
     while True:
         dlg = gui.Dlg(title="Subject Information")
+        if error:
+            dlg.addText(error, color="red")
         dlg.addText(
             "Instructions: press Escape at any time during the experiment to quit."
         )
-        dlg.addField("Participant Initials:")
-        dlg.addField("Subject Number:")
-        dlg.addField("Run Number:")
+        dlg.addField("Participant Initials:", initial=typed[0])
+        dlg.addField("Subject Number:", initial=typed[1])
+        dlg.addField("Run Number:", initial=typed[2])
         data = dlg.show()
 
         if not dlg.OK:
             core.quit()
 
-        initials = data[0].strip()
-        raw_sub = data[1].strip()
-        raw_run = data[2].strip()
+        typed = [str(data[i]).strip() for i in range(3)]
+        initials, raw_sub, raw_run = typed
 
         if not initials:
-            print("Error: Participant Initials cannot be empty.")
-            continue
-        try:
-            sub = int(raw_sub)
-        except ValueError:
-            print(f"Error: Subject Number '{raw_sub}' must be a valid integer.")
-            continue
-        try:
-            run = int(raw_run)
-        except ValueError:
-            print(f"Error: Run Number '{raw_run}' must be a valid integer.")
-            continue
+            error = "Participant initials cannot be empty."
+        elif not file_safe(initials):
+            error = (f"Participant initials '{initials}' go into the output folder name, "
+                     f"so use only letters, digits, spaces, - and _.")
+        elif not raw_sub.isdecimal():
+            error = f"Subject number '{raw_sub}' must be a whole number."
+        elif not raw_run.isdecimal():
+            error = f"Run number '{raw_run}' must be a whole number."
+        else:
+            return {
+                "initials": initials,
+                "subject_number": int(raw_sub),
+                "run_number": int(raw_run),
+                "run_order": ask_run_order(),
+            }
+        logger.error(error)
 
-        return {"initials": initials, "subject_number": sub, "run_number": run}
+
+def ask_run_order():
+    """Ask which run order to present: a preset OpenRecon order (returns 1 to the number
+    of movements) or a balanced random order (returns "random").
+
+    Nothing is preselected, so the operator has to choose; leaving it unchosen is
+    reported in red in the dialog. Calls core.quit() if the user cancels it.
+    """
+    choices = {"Balanced random (seeded on subject number)": "random",
+               **{f"OpenRecon run order {k}": k for k in sorted(RUN_ORDERS[BLOCKS])}}
+    error = ""
+    while True:
+        dlg = gui.Dlg(title="Run order")
+        if error:
+            dlg.addText(error, color="red")
+        dlg.addText("For OpenRecon, pick the run order set on the scanner protocol card.")
+        dlg.addField("Run order:", choices=["Choose...", *choices])
+        data = dlg.show()
+
+        if not dlg.OK:
+            core.quit()
+        if data[0] in choices:
+            return choices[data[0]]
+        error = "Please choose a run order."
+        logger.error(error)
 
 
 # ---------------------------------------------------------------------------
 # Trigger
 # ---------------------------------------------------------------------------
 
-def wait_for_trigger(
-    input_method: str = "key",
-    trigger_value: str = "5",
-    port_address=None,
-    serial_port=None,
-) -> None:
-    """Block until a scanner trigger is received.
+class TriggerLog:
+    """Records the time of every scanner trigger, on *clock*.
 
-    Supported *input_method* values:
-      - ``'key'``      -- waits for a keyboard press (default; for bench testing)
-      - ``'parallel'`` -- reads pin 10 of a parallel port
-      - ``'serial'``   -- reads bytes from a serial port at 9600 baud
+    The scanner pulses at the start of each TR. Polling happens inside the waits
+    between countdown images rather than once per image, so a trigger is timed to
+    about a millisecond instead of to whichever image it landed in.
+
+    Times are on *clock* as given; main() reports them from the first trigger.
     """
-    if input_method == "key":
-        logger.info("Waiting for key press: %s", trigger_value)
-        event.waitKeys(keyList=[trigger_value])
-        logger.info("Trigger received (key press)")
 
-    elif input_method == "parallel":
-        if port_address is None:
-            raise ValueError("port_address is required for parallel trigger input.")
-        from psychopy import parallel  # imported here -- not available on every platform
+    def __init__(self, clock, input_method, trigger_value,
+                 port_address=None, serial_port=None):
+        self.clock = clock
+        self.method = input_method
+        self.value = trigger_value
+        self.times = []
+        self.quit_pressed = False
+        self._port = None
+        self._was_high = False
 
-        pp = parallel.ParallelPort(address=port_address)
-        logger.info("Waiting for parallel port trigger at %s ...", port_address)
-        while not pp.readPin(10):
-            core.wait(0.001)
-        logger.info("Trigger received (parallel port)")
+        if input_method == "serial":
+            if serial_port is None:
+                raise ValueError("serial_port is required for serial trigger input.")
+            import serial as pyserial  # not available on every platform
 
-    elif input_method == "serial":
-        if serial_port is None:
-            raise ValueError("serial_port is required for serial trigger input.")
-        import serial as pyserial  # imported here -- not available on every platform
+            self._want = trigger_byte(trigger_value)
+            if self._want is None:
+                raise ValueError(f"trigger_value {trigger_value!r} is not a single byte.")
+            self._port = pyserial.Serial(serial_port, 9600, timeout=0)
+        elif input_method == "parallel":
+            if port_address is None:
+                raise ValueError("port_address is required for parallel trigger input.")
+            from psychopy import parallel  # not available on every platform
 
-        ser = pyserial.Serial(serial_port, 9600, timeout=1)
-        logger.info("Waiting for serial port trigger on %s ...", serial_port)
-        while True:
-            if ser.in_waiting > 0:
-                signal = ser.read().decode("utf-8")
-                if signal == trigger_value:
-                    break
-            core.wait(0.001)
-        logger.info("Trigger received (serial port)")
+            self._port = parallel.ParallelPort(address=port_address)
+        elif input_method != "key":
+            raise ValueError(
+                f"Invalid trigger input_method '{input_method}'. "
+                "Choose 'key', 'parallel', or 'serial'."
+            )
 
-    else:
-        raise ValueError(
-            f"Invalid trigger input_method '{input_method}'. "
-            "Choose 'key', 'parallel', or 'serial'."
-        )
+    def poll(self):
+        """Collect any triggers that have arrived. Cheap; call it as often as you like."""
+        if self.method == "key":
+            for key, when in event.getKeys(timeStamped=self.clock):
+                if key == self.value:
+                    self.times.append(when)
+                elif key == "escape":
+                    self.quit_pressed = True
+        elif self.method == "serial":
+            while self._port.in_waiting:
+                if self._port.read() == self._want:
+                    self.times.append(self.clock.getTime())
+        elif self.method == "parallel":
+            is_high = bool(self._port.readPin(10))
+            if is_high and not self._was_high:      # the rising edge is the trigger
+                self.times.append(self.clock.getTime())
+            self._was_high = is_high
+
+    def flush(self):
+        """Discard anything that arrived before we started waiting.
+
+        Without this a pulse from before the operator was ready, or a stray keypress,
+        would be taken as the first trigger and the run would start against it.
+        """
+        if self.method == "key":
+            event.clearEvents()
+        elif self.method == "serial":
+            self._port.reset_input_buffer()
+        elif self.method == "parallel":
+            self._was_high = bool(self._port.readPin(10))
+            if self._was_high:
+                logger.warning("Parallel pin 10 is already high. If it stays high no trigger "
+                               "will be seen; check PORT_ADDRESS and the cable.")
+        self.times.clear()
+
+    def close(self):
+        if self._port is not None and hasattr(self._port, "close"):
+            self._port.close()
+
+
+def wait_until(target: float, clock: core.Clock, triggers: "TriggerLog" = None) -> None:
+    """Wait until *target* on *clock*, recording triggers meanwhile if asked.
+
+    Without a *triggers* log this is a plain wait, so nothing changes for callers
+    that do not want the recording.
+    """
+    if triggers is None:
+        remaining = target - clock.getTime()
+        if remaining > 0:
+            core.wait(remaining)
+        return
+    triggers.poll()                      # at least once, even if we are already late
+    while clock.getTime() < target:
+        core.wait(0.0005)
+        triggers.poll()
+
+def wait_for_trigger(triggers: TriggerLog) -> None:
+    """Block until the first scanner trigger arrives, recording it like the rest.
+
+    *triggers* already knows the input method: a keyboard press for bench testing,
+    pin 10 of a parallel port, or bytes from a serial port at 9600 baud.
+    """
+    triggers.flush()
+    logger.info("Waiting for the scanner trigger (%s) ...", triggers.method)
+    while not triggers.times:
+        triggers.poll()
+        core.wait(0.0005)
+    logger.info("Trigger received")
 
 
 # ---------------------------------------------------------------------------
 # Quit handler
 # ---------------------------------------------------------------------------
 
-def check_quit_key() -> None:
-    """Check whether Escape has been pressed and exit gracefully if so."""
-    if "escape" in event.getKeys():
+def check_quit_key(triggers=None) -> None:
+    """Check whether Escape has been pressed and exit gracefully if so.
+
+    A key trigger log drains the whole key buffer as it polls, so it is the one
+    that sees Escape; ask it as well as the buffer.
+    """
+    if (triggers is not None and triggers.quit_pressed) or event.getKeys(keyList=["escape"]):
         logger.info("Experiment terminated by user (Escape).")
         core.quit()
 
@@ -205,11 +312,11 @@ def show_instruction(win: visual.Window, TR: float, TRs_instruction: int) -> Non
     core.wait(TR * TRs_instruction)
 
 
-def show_waiting_for_scanner(win: visual.Window) -> None:
-    """Display 'Waiting for scanner' until the trigger arrives."""
+def show_waiting_for_scanner(win: visual.Window, detail: str = "") -> None:
+    """Display 'Waiting for scanner', and *detail* below it, until the trigger arrives."""
     text = visual.TextStim(
         win,
-        text="Waiting for scanner",
+        text=f"Waiting for scanner\n\n{detail}",
         color=TEXT_COLOR,
         height=INSTRUCTION_TEXT_SIZE,
         units="height",
@@ -219,24 +326,25 @@ def show_waiting_for_scanner(win: visual.Window) -> None:
 
 
 def show_fixation(
-    win: visual.Window, TR: float, TRs_duration: int, text: str = "REST"
+    win: visual.Window, TR: float, TRs_duration: int, text: str = "REST", triggers=None
 ) -> None:
     """Show a simple text fixation for *TRs_duration* TRs."""
     stim = visual.TextStim(
         win, text=text, color=TEXT_COLOR, height=FIXATION_TEXT_SIZE, units="height"
     )
-    for _ in range(TRs_duration):
+    clock = core.Clock()
+    for i in range(1, TRs_duration + 1):
         stim.draw()
         win.flip()
-        core.wait(TR)
+        wait_until(i * TR, clock, triggers)
 
 
 def handle_dummy_scans(
-    win: visual.Window, TR: float, TRs_dummy_scans: int
+    win: visual.Window, TR: float, TRs_dummy_scans: int, triggers=None
 ) -> None:
     """Display fixation during dummy scans (skipped when TRs_dummy_scans == 0)."""
     if TRs_dummy_scans > 0:
-        show_fixation(win, TR, TRs_dummy_scans, text="REST")
+        show_fixation(win, TR, TRs_dummy_scans, text="REST", triggers=triggers)
 
 
 # ---------------------------------------------------------------------------
@@ -246,58 +354,70 @@ def handle_dummy_scans(
 def _display_countdown(
     win: visual.Window,
     images: list,
-    display_time: float,
     overlay_text: visual.TextStim,
+    clock: core.Clock,
+    start: float,
+    end: float,
+    triggers=None,
 ) -> None:
-    """Cycle through countdown images with a text overlay."""
-    for img in images:
+    """Cycle through the countdown images between *start* and *end* on *clock*.
+
+    Each image is held until its own absolute target time, so the latency of a
+    flip is absorbed by the image it belongs to. Holding each image for a fixed
+    time after its flip makes that latency cumulative instead, lengthening every
+    epoch and the run with it.
+    """
+    step = (end - start) / len(images)
+    for i, img in enumerate(images, start=1):
+        check_quit_key(triggers)   # so Escape acts within one image, not one epoch
         img.draw()
         overlay_text.draw()
         win.flip()
-        core.wait(display_time)
+        wait_until(start + i * step, clock, triggers)
 
 
 def run_trial(
     win: visual.Window,
     condition: str,
-    TR: float,
-    TRs_per_trial: int,
     countdown_images: list,
     global_clock: core.Clock,
-) -> tuple:
-    """Run a single motor-imagery trial.
+    end_time: float,
+    triggers=None,
+) -> float:
+    """Run a single motor-imagery trial, ending at *end_time* on *global_clock*.
 
-    Returns (onset_time, duration) measured from *global_clock*.
+    *end_time* comes from the schedule, so a trial that starts late is shortened
+    rather than pushing everything after it later. Returns the onset time.
     """
     trial_text = visual.TextStim(
         win,
         text=f"MOVE {condition}",
         color=TEXT_COLOR,
-        height=INSTRUCTION_TEXT_SIZE,
+        height=TRIAL_TEXT_SIZE,
         units="height",
     )
-
-    trial_duration = TR * TRs_per_trial
-    display_time = trial_duration / len(countdown_images)
 
     onset_time = global_clock.getTime()
     logger.debug("Trial %s started at %.3f s", condition, onset_time)
 
-    _display_countdown(win, countdown_images, display_time, trial_text)
+    _display_countdown(win, countdown_images, trial_text, global_clock, onset_time,
+                       end_time, triggers)
 
-    end_time = global_clock.getTime()
-    logger.debug("Trial %s ended at %.3f s", condition, end_time)
-
-    return onset_time, end_time - onset_time
+    logger.debug("Trial %s ended at %.3f s", condition, global_clock.getTime())
+    return onset_time
 
 
 def show_rest_with_countdown(
     win: visual.Window,
-    TR: float,
-    TRs_duration: int,
     countdown_images: list,
-) -> None:
-    """Display a REST screen with the countdown timer."""
+    global_clock: core.Clock,
+    end_time: float,
+    triggers=None,
+) -> float:
+    """Display a REST screen with the countdown, ending at *end_time* on *global_clock*.
+
+    Returns the onset time.
+    """
     rest_text = visual.TextStim(
         win,
         text="REST",
@@ -305,6 +425,7 @@ def show_rest_with_countdown(
         height=FIXATION_TEXT_SIZE,
         units="height",
     )
-    rest_duration = TR * TRs_duration
-    display_time = rest_duration / len(countdown_images)
-    _display_countdown(win, countdown_images, display_time, rest_text)
+    onset_time = global_clock.getTime()
+    _display_countdown(win, countdown_images, rest_text, global_clock, onset_time,
+                       end_time, triggers)
+    return onset_time
