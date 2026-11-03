@@ -14,6 +14,7 @@ from parameters import (
     TRs_rest,
 )
 from run_orders import RUN_ORDERS
+from design import epochs
 from schedule import (MID_REST, check_parameters, generate_trial_schedule, measurements,
                       run_order_blocks)
 
@@ -42,10 +43,11 @@ for blocks, orders in RUN_ORDERS.items():
         assert [e["condition"] for e in schedule if e["condition"] != "REST"] == sum(run, []), run_order
         assert "".join("R" if e["condition"] == "REST" else "M"
                        for e in schedule) == "R" + BLOCK_LAYOUT * blocks, (blocks, run_order)
-        assert all(e["simulated_onset"] % TR == 0 for e in schedule), (blocks, run_order)
+        assert all(abs(e["simulated_onset"] / TR - round(e["simulated_onset"] / TR)) < 1e-9
+                   for e in schedule), (blocks, run_order)
         assert schedule[-1]["duration"] == FINAL, (blocks, run_order)
         end = schedule[-1]["simulated_onset"] + schedule[-1]["duration"]
-        assert end == REST + blocks * (N * TRIAL + REST * HAS_MID) + (blocks - 1) * REST + FINAL
+        assert abs(end - (REST + blocks * (N * TRIAL + REST * HAS_MID) + (blocks - 1) * REST + FINAL)) < 1e-9
         assert measurements(schedule) == TRs_dummy_scans + round(end / TR), (blocks, run_order)
 
     # Balanced random is preset order 1 with the movements relabelled.
@@ -60,5 +62,16 @@ assert run_order_blocks("random", 7) != run_order_blocks("random", 8)
 
 schedule = generate_trial_schedule(run_order_blocks(1, subnum=1))
 scan = schedule[-1]["simulated_onset"] + schedule[-1]["duration"]
+
+# The container's schedule (design.py --json): the epochs tile the scan volume by volume from
+# the first trigger, dummy scans included, and the seconds agree with the volumes.
+for k in RUN_ORDERS[BLOCKS]:
+    ep = epochs(k, subnum=1)
+    assert ep[0]["first_volume"] == TRs_dummy_scans, k
+    assert all(a["first_volume"] + a["volumes"] == b["first_volume"] for a, b in zip(ep, ep[1:])), k
+    assert ep[-1]["first_volume"] + ep[-1]["volumes"] == measurements(schedule), k
+    task = generate_trial_schedule(run_order_blocks(k, subnum=1))       # what the task runs
+    assert len(ep) == len(task) and all(
+        abs(e["onset"] - s["simulated_onset"] - TR * TRs_dummy_scans) < 1e-6 for e, s in zip(ep, task)), k
 print(f"OK: {len(RUN_ORDERS)} block counts x {N} preset orders, plus balanced random. "
       f"parameters.py: {BLOCKS} blocks, {scan:.0f} s, {measurements(schedule)} measurements")

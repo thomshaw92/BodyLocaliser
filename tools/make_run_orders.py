@@ -5,7 +5,8 @@ Needs numpy and scipy, which the PsychoPy .venv already has. Takes a few minutes
 Output is deterministic: the same movements and timings give the same file.
 
 To change the movements, edit COND_NAMES in src/parameters.py and rerun this, then run
-python3 src/test_schedule.py and give the OpenRecon container the new src/run_orders.py.
+python3 src/test_schedule.py and give the OpenRecon container a fresh
+python3 src/design.py --json.
 N movements give N run orders, and the run order dialog offers one for each.
 
 RUN_ORDERS[blocks][k] is preset run order k (1 to N) for that many blocks; each block shows

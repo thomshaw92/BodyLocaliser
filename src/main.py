@@ -191,11 +191,9 @@ def main():
         triggers = TriggerLog(core.Clock(), TRIGGER_INPUT_METHOD, TRIGGER_VALUE,
                               PORT_ADDRESS, SERIAL_PORT)
         wait_for_trigger(triggers)
-        check_quit_key()
 
         # ---- Dummy scans ----
         handle_dummy_scans(win, TR, TRs_dummy_scans, triggers)
-        check_quit_key()
 
         # ---- Global clock starts now ----
         global_clock = core.Clock()

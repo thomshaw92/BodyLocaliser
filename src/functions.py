@@ -275,6 +275,7 @@ def wait_for_trigger(triggers: TriggerLog) -> None:
     logger.info("Waiting for the scanner trigger (%s) ...", triggers.method)
     while not triggers.times:
         triggers.poll()
+        check_quit_key(triggers)    # poll() takes Escape off the buffer for a key trigger
         core.wait(0.0005)
     logger.info("Trigger received")
 
@@ -334,6 +335,7 @@ def show_fixation(
     )
     clock = core.Clock()
     for i in range(1, TRs_duration + 1):
+        check_quit_key(triggers)   # so Escape acts within one TR during the dummy scans
         stim.draw()
         win.flip()
         wait_until(i * TR, clock, triggers)

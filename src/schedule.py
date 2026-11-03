@@ -141,7 +141,7 @@ def check_parameters():
     else:
         preset = sorted(RUN_ORDERS[BLOCKS][1][0])
         rebuild = ("Run python3 tools/make_run_orders.py to rebuild it, "
-                   "and give the OpenRecon container the new file")
+                   "then give the OpenRecon container a fresh python3 src/design.py --json")
         if len(preset) != n:
             problems.append(f"no preset run orders for these {n} movements; run_orders.py was "
                             f"built for {len(preset)}. {rebuild}")

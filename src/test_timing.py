@@ -114,10 +114,16 @@ assert drift_end - planned > 0.5 * len(schedule) * NUM_COUNTDOWN_IMAGES * FLIP_C
 # The scanner pulses at the start of each TR. These are queued as if they were key
 # presses, so the recorder can be checked without a scanner or a serial port.
 pending = []
-psychopy.event.getKeys = lambda keyList=None, timeStamped=None, **kw: [
-    (k, t) for k, t in [pending.pop(0) for _ in range(len(pending))]
-    if keyList is None or k in keyList
-]
+
+
+def take(keyList=None, timeStamped=None, **kw):
+    """PsychoPy's getKeys: return the keys asked for, and leave the rest in the buffer."""
+    out = [(k, t) for k, t in pending if keyList is None or k in keyList]
+    pending[:] = [(k, t) for k, t in pending if not (keyList is None or k in keyList)]
+    return out
+
+
+psychopy.event.getKeys = take
 psychopy.event.clearEvents = lambda *a, **kw: pending.clear()
 
 from functions import TriggerLog, wait_for_trigger, wait_until             # noqa: E402
@@ -130,13 +136,11 @@ clock = Clock()
 polls = [0]
 
 
-def arm(keyList=None, timeStamped=None, **kw):
+def arm(**kw):
     polls[0] += 1
     if polls[0] == 2:                        # a real pulse arrives while we wait
         pending.append(("5", 4.0))
-    out = [(k, t) for k, t in pending if keyList is None or k in keyList]
-    pending.clear()
-    return out
+    return take(**kw)
 
 
 psychopy.event.getKeys = arm
@@ -145,10 +149,36 @@ triggers = TriggerLog(clock, "key", "5")
 wait_for_trigger(triggers)
 assert triggers.times == [4.0], f"started on a stale trigger: {triggers.times}"
 
-psychopy.event.getKeys = lambda keyList=None, timeStamped=None, **kw: [
-    (k, t) for k, t in [pending.pop(0) for _ in range(len(pending))]
-    if keyList is None or k in keyList
-]
+# Escape on the "Waiting for scanner" screen must quit there and then. A key trigger's poll()
+# takes Escape off the buffer, so a wait loop that only polls sat on it until the scanner
+# started, and the run then quit on its first epoch.
+class Quit(Exception):
+    pass
+
+
+def escape_then_pulse(**kw):
+    polls[0] += 1
+    if polls[0] == 1:
+        pending.append(("escape", 1.0))
+    if polls[0] == 50:
+        pending.append(("5", 2.0))
+    return take(**kw)
+
+
+def quit_now():
+    raise Quit
+
+
+polls[0] = 0
+psychopy.event.getKeys, core.quit = escape_then_pulse, quit_now
+try:
+    wait_for_trigger(TriggerLog(clock, "key", "5"))
+    raise AssertionError("Escape while waiting for the scanner did not quit")
+except Quit:
+    pass
+core.quit = lambda: None
+
+psychopy.event.getKeys = take
 triggers.times.clear()
 
 # Pulses at every TR through a run of epochs, each polled inside the wait.
