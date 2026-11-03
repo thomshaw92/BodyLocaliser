@@ -1,14 +1,14 @@
 #!/bin/bash
 # BodyLocaliser -- Mac launcher
 # Double-click this file to install dependencies and run the experiment.
-# PsychoPy requires Python >=3.9, <3.12.
+# PsychoPy requires Python >=3.10, <3.13.
 
 cd "$(dirname "$0")"
 
 VENV_DIR=".venv"
 PYTHON=""
-NEED_MIN=9
-NEED_MAX=11
+NEED_MIN=10
+NEED_MAX=12
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -49,7 +49,7 @@ if [ -f "$VENV_DIR/bin/python" ]; then
         PYTHON="$VENV_DIR/bin/python"
     else
         echo "Existing .venv uses Python $(get_version_str "$VENV_DIR/bin/python"), which is not compatible."
-        echo "PsychoPy requires Python 3.9, 3.10, or 3.11."
+        echo "PsychoPy requires Python 3.10, 3.11, or 3.12."
         echo ""
         if ask_yes_no "Delete the existing .venv and create a new one?"; then
             rm -rf "$VENV_DIR"
@@ -68,12 +68,12 @@ fi
 # ---------------------------------------------------------------------------
 if [ -z "$PYTHON" ]; then
     echo ""
-    echo "Looking for Python 3.9--3.11 on this system..."
+    echo "Looking for Python 3.10--3.12 on this system..."
     echo ""
 
     FOUND_ANY_PYTHON=""
 
-    for v in 3.11 3.10 3.9; do
+    for v in 3.11 3.12 3.10; do
         if is_compatible "python$v"; then
             echo "  Found python$v ($(get_version_str "python$v"))"
             PYTHON="python$v"
@@ -107,12 +107,12 @@ fi
 if [ -z "$PYTHON" ]; then
     echo ""
     if [ -n "$FOUND_ANY_PYTHON" ]; then
-        echo "Found $FOUND_ANY_PYTHON, but PsychoPy requires 3.9, 3.10, or 3.11."
+        echo "Found $FOUND_ANY_PYTHON, but PsychoPy requires 3.10, 3.11, or 3.12."
     else
         echo "No Python installation found."
     fi
     echo ""
-    echo "PsychoPy needs Python 3.9, 3.10, or 3.11 to run."
+    echo "PsychoPy needs Python 3.10, 3.11, or 3.12 to run."
     echo ""
 
     HAS_CONDA=false
@@ -149,7 +149,7 @@ if [ -z "$PYTHON" ]; then
         if [ "$choice" = "$OPT_CONDA" ] && [ -n "$OPT_CONDA" ]; then
             echo ""
             echo "Creating conda environment with Python 3.11..."
-            if conda create -y -p "$VENV_DIR" python=3.11 pip -q; then
+            if conda create -y -p "$VENV_DIR" --override-channels -c conda-forge python=3.11 pip -q; then
                 PYTHON="$VENV_DIR/bin/python"
                 echo ""
                 echo "Conda environment created successfully."
@@ -243,7 +243,7 @@ if [ -z "$PYTHON" ]; then
         # --- Exit ---
         elif [ "$choice" = "$OPT_EXIT" ]; then
             echo ""
-            echo "Install Python 3.9, 3.10, or 3.11, then run this script again."
+            echo "Install Python 3.10, 3.11, or 3.12, then run this script again."
             read -rp "Press Enter to exit..."
             exit 0
 
@@ -266,7 +266,7 @@ if [ ! -d "$VENV_DIR" ]; then
         echo ""
         if command -v conda &>/dev/null; then
             if ask_yes_no "Would you like to try using conda instead?"; then
-                conda create -y -p "$VENV_DIR" python=3.11 pip -q
+                conda create -y -p "$VENV_DIR" --override-channels -c conda-forge python=3.11 pip -q
                 PYTHON="$VENV_DIR/bin/python"
             else
                 read -rp "Press Enter to exit..."
@@ -287,7 +287,8 @@ fi
 # ---------------------------------------------------------------------------
 # Step 5: Install dependencies
 # ---------------------------------------------------------------------------
-if [ ! -f "$VENV_DIR/.installed" ]; then
+# .installed holds the requirements.txt that was installed, so a changed one reinstalls.
+if ! cmp -s requirements.txt "$VENV_DIR/.installed"; then
     echo ""
     echo "Installing PsychoPy and dependencies (this may take a few minutes)..."
     echo ""
@@ -313,7 +314,7 @@ if [ ! -f "$VENV_DIR/.installed" ]; then
             exit 1
         fi
     fi
-    touch "$VENV_DIR/.installed"
+    cp requirements.txt "$VENV_DIR/.installed"
     echo ""
     echo "Dependencies installed successfully."
 fi

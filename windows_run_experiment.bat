@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 REM BodyLocaliser -- Windows launcher
 REM Double-click this file to install dependencies and run the experiment.
-REM PsychoPy requires Python >=3.9, <3.12.
+REM PsychoPy requires Python >=3.10, <3.13.
 
 cd /d "%~dp0"
 
@@ -23,7 +23,7 @@ if exist "%VENV_DIR%\Scripts\python.exe" (
         goto :check_installed
     ) else (
         echo Existing .venv uses Python !VENV_VER!, which is not compatible.
-        echo PsychoPy requires Python 3.9, 3.10, or 3.11.
+        echo PsychoPy requires Python 3.10, 3.11, or 3.12.
         echo.
         set /p DELCHOICE="Delete the existing .venv and create a new one? [y/n] "
         if /i "!DELCHOICE!"=="y" (
@@ -44,11 +44,11 @@ set PYTHON=
 set FOUND_ANY=
 
 echo.
-echo Looking for Python 3.9--3.11 on this system...
+echo Looking for Python 3.10--3.12 on this system...
 echo.
 
 REM Try the py launcher with specific versions
-for %%v in (3.11 3.10 3.9) do (
+for %%v in (3.11 3.12 3.10) do (
     echo Checking for py -%%v...
     for /f "tokens=2 delims= " %%V in ('py -%%v --version 2^>nul') do (
         set "VER=%%V"
@@ -84,12 +84,12 @@ REM Step 3: No compatible Python -- offer options
 REM -------------------------------------------------------------------
 echo.
 if defined FOUND_ANY (
-    echo Found !FOUND_ANY!, but PsychoPy requires 3.9, 3.10, or 3.11.
+    echo Found !FOUND_ANY!, but PsychoPy requires 3.10, 3.11, or 3.12.
 ) else (
     echo No Python installation found.
 )
 echo.
-echo PsychoPy needs Python 3.9, 3.10, or 3.11 to run.
+echo PsychoPy needs Python 3.10, 3.11, or 3.12 to run.
 echo.
 
 echo How would you like to install a compatible Python?
@@ -122,7 +122,7 @@ REM --- Conda ---
 if "!USERCHOICE!"=="!OPT_CONDA!" if !OPT_CONDA! gtr 0 (
     echo.
     echo Creating conda environment with Python 3.11...
-    conda create -y -p %VENV_DIR% python=3.11 pip -q
+    conda create -y -p %VENV_DIR% --override-channels -c conda-forge python=3.11 pip -q
     if errorlevel 1 (
         echo.
         echo Conda environment creation failed.
@@ -205,7 +205,7 @@ if "!USERCHOICE!"=="!OPT_INSTALLER!" (
 REM --- Exit ---
 if "!USERCHOICE!"=="!OPT_EXIT!" (
     echo.
-    echo Install Python 3.9, 3.10, or 3.11, then run this script again.
+    echo Install Python 3.10, 3.11, or 3.12, then run this script again.
     echo Download from: https://www.python.org/downloads/
     pause
     exit /b 0
@@ -231,7 +231,7 @@ if not exist "%VENV_DIR%\Scripts\python.exe" (
         if %HAS_CONDA%==1 (
             set /p CONDAFB="Would you like to try using conda instead? [y/n] "
             if /i "!CONDAFB!"=="y" (
-                conda create -y -p %VENV_DIR% python=3.11 pip -q
+                conda create -y -p %VENV_DIR% --override-channels -c conda-forge python=3.11 pip -q
                 if errorlevel 1 (
                     echo Conda also failed. Check the errors above.
                     pause
@@ -252,7 +252,9 @@ REM -------------------------------------------------------------------
 :check_installed
 call %VENV_DIR%\Scripts\activate.bat
 
-if not exist "%VENV_DIR%\.installed" (
+REM .installed holds the requirements.txt that was installed, so a changed one reinstalls.
+fc /b requirements.txt "%VENV_DIR%\.installed" >nul 2>&1
+if errorlevel 1 (
     echo.
     echo Installing PsychoPy and dependencies (this may take a few minutes^)...
     echo.
@@ -277,7 +279,7 @@ if not exist "%VENV_DIR%\.installed" (
             exit /b 1
         )
     )
-    echo. > %VENV_DIR%\.installed
+    copy /y requirements.txt "%VENV_DIR%\.installed" >nul
     echo.
     echo Dependencies installed successfully.
 )
